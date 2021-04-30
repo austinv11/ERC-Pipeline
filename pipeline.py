@@ -949,9 +949,9 @@ async def generate_erc(topology: str, alignment1: str, alignment2: str, internal
 
     shared_taxa = list(shared_taxa)
 
-    prune_top, prune_aln1, prune_aln2 = await asyncio.gather(prune_tree(topology, shared_taxa, None),
-                                                             prune_tree(alignment1, shared_taxa, None),
-                                                             prune_tree(alignment2, shared_taxa, None))
+    prune_top = prune_tree(topology, shared_taxa, None)
+    prune_aln1 = prune_tree(alignment1, shared_taxa, None)
+    prune_aln2 = prune_tree(alignment2, shared_taxa, None)
 
     if time_corrected:
         rho, p = await partial_correlation(prune_aln1, prune_aln2, prune_top, prune_top,
@@ -1178,7 +1178,6 @@ class ErcWorkspace:
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
                  sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
                  taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict()):
-        self.directory = directory
         self.timetree = timetree
         self.aligns = []
         self.paired_aligns = []
@@ -1206,6 +1205,7 @@ class ErcWorkspace:
             safe_mkdir(osp.join(directory, 'segments'))
 
         os.chdir(directory)
+        self.directory = os.getcwd()
 
     def add_alignment(self, alignment: str, alignment2: str = None):
         assert osp.exists(alignment)

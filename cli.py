@@ -9,7 +9,7 @@ from utilities import override_sys_out, try_hook_uvloop, _self_path
 from pipeline import ErcWorkspace, _20mya_cutoff, _30mya_cutoff
 
 
-FASTA_ENDINGS = [".fa", ".faa", ".fs", ".fasta"]
+FASTA_ENDINGS = ["fa", "faa", "fs", "fasta"]
 
 
 @click.command()
