@@ -1602,7 +1602,7 @@ class ErcWorkspace:
     def generate_network(self) -> nx.Graph:
         """Assumes that we are still in the workspace directory"""
         graph = nx.Graph()
-        for entry in read_datasource(ErcDataSource("tree/", "ercs.csv")):
+        for entry in read_datasource(ErcDataSource("tree/", "ercs.csv", ",", None)):
             id1 = osp.basename(entry.path1).split('.')[0]
             id2 = osp.basename(entry.path2).split('.')[0]
 
