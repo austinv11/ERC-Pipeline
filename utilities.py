@@ -6,6 +6,7 @@ import os.path as osp
 import sys
 from typing import Tuple, Dict, List
 
+import xlsxwriter
 from ete3 import PhyloTree
 from ete3.parser.newick import NewickError
 import networkx as nx
@@ -149,6 +150,24 @@ def rrn_nets(net: nx.Graph, *odbs: str) -> Tuple[nx.DiGraph, nx.DiGraph, nx.DiGr
             _add_edge(step3, n1, n2)
 
     return step1, step2, step3
+
+
+def make_rho_formatting(workbook: xlsxwriter.Workbook):
+    return workbook.add_format({
+        "num_format": "0.000"
+    })
+
+
+def make_p_formatting(workbook: xlsxwriter.Workbook):
+    return workbook.add_format({
+        "num_format": "0.00E+00"
+    })
+
+
+def make_bold_formatting(workbook: xlsxwriter.Workbook):
+    return workbook.add_format({
+        'bold': True
+    })
 
 
 def color_from_custom_map(pct: float, cmap: Dict[float, Tuple[int, int, int]]) -> str:

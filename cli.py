@@ -28,8 +28,10 @@ FASTA_ENDINGS = [".fa", ".faa", ".fs", ".fasta"]
               help="If passed, segmented ERCs are run with a sliding window (of the size passed in --kmer) instead of naively splitting alignments into kmers.")
 @click.option("--skip-align", is_flag=True, help="Assume the sequences have already been aligned.")
 @click.option("--skip-trim", is_flag=True, help="Assume the sequences have already been trimmed.")
+@click.option("--id2name", default=None,
+              help="Pass a tab-separated file with 2 columns representing: 'alignment_identifier' and 'readable_name', respectively, including a header line. This is used for exporting the resultant matrix.")
 def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool,
-         kmer: int, slide: bool, skip_align: bool, skip_trim: bool):
+         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, id2name: str):
     try_hook_uvloop()
     override_sys_out("ERC")
 
@@ -54,6 +56,21 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
     if skip_trim:
         arg_mods["skip_trim"] = skip_trim
 
+    if id2name:
+        assert osp.exists(id2name)
+        id2name_dict = dict()
+        with open(id2name, 'r') as f:
+            first = True
+            for l in f:
+                if first:
+                    first = False
+                    continue
+                split = l.strip().split("\t")
+                if len(split) < 2:
+                    continue
+                id2name_dict[split[0].strip()] = split[1].strip()
+        arg_mods["id2name"] = id2name_dict
+
     print("Starting up...")
 
     workspace = ErcWorkspace(wd, timetree, **arg_mods)
@@ -72,7 +89,9 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
 
     asyncio.get_event_loop().run_until_complete(workspace.run())
 
-    workspace.export_results("all2all_matrix")
+    if not segment:
+        workspace.export_results("all2all_matrix.xlsx")
+        print("Saved data to all2all_matrix.xlsx")
 
     print("Completed!")
 

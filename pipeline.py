@@ -19,7 +19,8 @@ from scipy.stats import spearmanr
 import xlsxwriter
 
 from fasta import read_records, write_records, Record
-from utilities import async_call, safe_phylo_read, safe_delete, _self_path, safe_mkdir, chunks
+from utilities import async_call, safe_phylo_read, safe_delete, _self_path, safe_mkdir, chunks, make_bold_formatting, \
+    make_p_formatting, make_rho_formatting
 
 ErcResult = namedtuple('ErcResult', ['file1', 'file2', 'rho', 'p', 'raw_rates'])
 
@@ -1175,8 +1176,8 @@ class ErcWorkspace:
 
     def __init__(self, directory: str, timetree: str, segmented: bool = False, segment_size: int = 10,
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
-                 sliding_window: bool = False, skip_align: bool = False,skip_trim: bool = False,
-                 taxon_set: List[str] = None, time_corrected: bool = False):
+                 sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
+                 taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict()):
         self.directory = directory
         self.timetree = timetree
         self.aligns = []
@@ -1192,6 +1193,7 @@ class ErcWorkspace:
         self.skip_trim = skip_trim
         self.taxon_set = taxon_set
         self.time_corrected = time_corrected
+        self.id2name = id2name
 
         safe_mkdir(directory)
         safe_mkdir(osp.join(directory, 'cleaned'))
@@ -1597,5 +1599,42 @@ class ErcWorkspace:
                         f.write("\n")
 
 
+    def generate_network(self) -> nx.Graph:
+        """Assumes that we are still in the workspace directory"""
+        graph = nx.Graph()
+        for entry in read_datasource(ErcDataSource("tree/", "ercs.csv")):
+            id1 = osp.basename(entry.path1).split('.')[0]
+            id2 = osp.basename(entry.path2).split('.')[0]
+
+            graph.add_edge(id1, id2, rho=entry.rho, p=entry.p, weight=entry.rho)
+        return graph
+
+
     def export_results(self, basename: str):
-        ...
+        book = xlsxwriter.Workbook(basename)
+        rho_sheet = book.add_worksheet("Rho Values")
+        p_sheet = book.add_worksheet("P Values")
+
+        bold = make_bold_formatting(book)
+        p_format = make_p_formatting(book)
+        rho_format = make_rho_formatting(book)
+
+        network = self.generate_network()
+
+        sorted_ids = list(sorted(network.nodes, key = lambda n: self.id2name.get(n, n)))
+
+        rho_sheet.write_row(0, 1, [self.id2name.get(n, n) for n in sorted_ids], cell_format=bold)
+        p_sheet.write_row(0, 1, [self.id2name.get(n, n) for n in sorted_ids], cell_format=bold)
+        rho_sheet.write_column(1, 0, [self.id2name.get(n, n) for n in sorted_ids], cell_format=bold)
+        p_sheet.write_column(1, 0, [self.id2name.get(n, n) for n in sorted_ids], cell_format=bold)
+
+        for i, id1 in enumerate(sorted_ids):
+            for j, id2 in enumerate(sorted_ids):
+                if id1 == id2:
+                    rho_sheet.write(i + 1, j + 1, 1.0)
+                    p_sheet.write(i + 1, j + 1, 1.0)
+                else:
+                    rho_sheet.write(i + 1, j + 1, network[id1][id2]['rho'], rho_format)
+                    p_sheet.write(i + 1, j + 1, network[id1][id2]['p'], p_format)
+
+        book.close()
