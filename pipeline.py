@@ -1175,8 +1175,8 @@ class ErcWorkspace:
 
     def __init__(self, directory: str, timetree: str, segmented: bool = False, segment_size: int = 10,
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
-                 sliding_window: bool = False, skip_trim: bool = False, taxon_set: List[str] = None,
-                 time_corrected: bool = False, id2name: Dict[str, str] = None):
+                 sliding_window: bool = False, skip_align: bool = False,skip_trim: bool = False,
+                 taxon_set: List[str] = None, time_corrected: bool = False):
         self.directory = directory
         self.timetree = timetree
         self.aligns = []
@@ -1188,10 +1188,10 @@ class ErcWorkspace:
         self.include_terminal = include_terminal
         self.recalculate = recalculate
         self.sliding_window = sliding_window
+        self.skip_align = skip_align
         self.skip_trim = skip_trim
         self.taxon_set = taxon_set
         self.time_corrected = time_corrected
-        self.id2name = id2name
 
         safe_mkdir(directory)
         safe_mkdir(osp.join(directory, 'cleaned'))
@@ -1287,9 +1287,14 @@ class ErcWorkspace:
                     await asyncio.gather(*[clean_fasta(self.timetree, f, osp.join(self.directory, 'cleaned', osp.basename(f))) for f in als])
 
         if not osp.exists(osp.join(self.directory, 'aligns.tar.bz2')):
-            for aligns in chunks(align_names + concat_align_names, 4):
-                await asyncio.gather(*[align(osp.join(self.directory, 'cleaned', f),
-                                             osp.join(self.directory, 'aligns', f)) for f in aligns if f not in self.concatenated])
+            if self.skip_align:
+                for f in (align_names + concat_align_names):
+                    if f not in self.concatenated:
+                        shutil.copy(osp.join(self.directory, 'cleaned', f), osp.join(self.directory, 'aligns', f))
+            else:
+                for aligns in chunks(align_names + concat_align_names, 4):
+                    await asyncio.gather(*[align(osp.join(self.directory, 'cleaned', f),
+                                                 osp.join(self.directory, 'aligns', f)) for f in aligns if f not in self.concatenated])
             shutil.rmtree(osp.join(self.directory, 'cleaned'))
 
         to_remove = set()  # Remove seqs only composed of gaps

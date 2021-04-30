@@ -15,7 +15,7 @@ FASTA_ENDINGS = [".fa", ".faa", ".fs", ".fasta"]
 @click.command()
 @click.option("--timetree", default=osp.join(_self_path(), "data", "finished_mam_timetree.nwk"),
               help="The time-scaled species phylogeny in newick format. Defaults to mammalian tree")
-@click.option("--alignments", default=".", help="The directory to search for alignments in.")
+@click.option("--sequences", default=".", help="The directory to search for sequences in.")
 @click.option("--align-pair", nargs=2, type=str, multiple=True,
               help="Instead of specifying a directory of alignments, you can specify individual pairs of alignments to run")
 @click.option("--wd", default=".", help="The working directory to write files to.")
@@ -26,7 +26,10 @@ FASTA_ENDINGS = [".fa", ".faa", ".fs", ".fasta"]
 @click.option("--kmer", default=10, type=int, help="The kmer sized pieces to run segmented ERCs on.")
 @click.option("--slide", is_flag=True,
               help="If passed, segmented ERCs are run with a sliding window (of the size passed in --kmer) instead of naively splitting alignments into kmers.")
-def main(timetree: str, alignments: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool, kmer: int, slide: bool):
+@click.option("--skip-align", is_flag=True, help="Assume the sequences have already been aligned.")
+@click.option("--skip-trim", is_flag=True, help="Assume the sequences have already been trimmed.")
+def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool,
+         kmer: int, slide: bool, skip_align: bool, skip_trim: bool):
     try_hook_uvloop()
     override_sys_out("ERC")
 
@@ -46,18 +49,23 @@ def main(timetree: str, alignments: str, align_pair: List[Tuple[str, str]], wd: 
         if slide:
             arg_mods['sliding_window'] = True
 
+    if skip_align:
+        arg_mods["skip_align"] = skip_align
+    if skip_trim:
+        arg_mods["skip_trim"] = skip_trim
+
     print("Starting up...")
 
     workspace = ErcWorkspace(wd, timetree, **arg_mods)
 
     if not align_pair:
-        for f in os.listdir(alignments):
+        for f in os.listdir(sequences):
             if osp.isdir(f):
                 continue
             if f.split(".")[-1].lower() not in FASTA_ENDINGS:
                 print(f"WARNING: Skipping alignment file {f}! It does not have a fasta file ending!")
                 continue
-            workspace.add_alignment(osp.join(alignments, f))
+            workspace.add_alignment(osp.join(sequences, f))
     else:
         for pair in align_pair:
             workspace.add_alignment(pair[0], pair[1])
