@@ -55,9 +55,9 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
 
 * Note that if you are using the default mammalian phylogeny, you can omit the `--timetree PHYLOGENY.nwk` argument. 
   Additionally, you would be able to use the 20MY or 30MY ERC calculations described in Varela et al 2021 using either
-  `--erc_type 20my` or `--erc_type 30my` respectively. 
+  `--erc-type 20my` or `--erc-type 30my` respectively. 
   
-* If you wish to use the time-corrected correlation method, you can add the `--erc_type bt` argument.
+* If you wish to use the time-corrected correlation method, you can add the `--erc-type bt` argument.
 
 
 ## Citations
