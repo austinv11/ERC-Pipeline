@@ -57,7 +57,22 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
   Additionally, you would be able to use the 20MY or 30MY ERC calculations described in Varela et al 2021 using either
   `--erc-type 20my` or `--erc-type 30my` respectively. 
   
-* If you wish to use the time-corrected correlation method, you can add the `--erc-type bt` argument.
+* If you wish to use the time-corrected correlation method, you can add the `--erc-type bt` argument (requires R).
+
+* If you want to only run ERCs on specific pairs of proteins, you can pass the 
+  `--align-pair /path/to/align1.fasta /path/to/align2.fasta` option as many times as needed.
+
+* If your sequence data are already prepared, you can use `--skip-align` and `--skip-trim` to skip alignment and 
+  trimming of alignments, respectively.
+  
+* If your alignments are titled based on non-readable identifiers instead of protein names/symbols (for example: 
+  OrthoDB ids), you can create a tab-separated file with 2 columns: "alignment_identifier" and "readable_name". This
+  will be used to replace the original alignment names with the readable names if you pass the path to this file to the
+  argument: `--id2name /path/to/file.tsv`
+
+* If you want to run ERCs along pieces of the alignments, add the `--segment` argument. This can be modified using the 
+  `--slide` argument, which rather than splitting the alignment into kmers, will normalize the data using a sliding 
+  window based on kmers. You can also use `--kmer K` to change the size of the kmers (replace "K" with the number). 
 
 
 ## Citations
