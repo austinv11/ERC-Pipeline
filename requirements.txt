@@ -6,6 +6,7 @@ scipy==1.3.3
 networkx==2.5
 gseapy==0.10.3
 XlsxWriter
+git+https://github.com/marekborowiec/AMAS@7a127d1#egg=amas
 
 # Optional
 uvloop

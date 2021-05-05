@@ -8,8 +8,9 @@ import traceback
 from collections import namedtuple
 import os.path as osp
 from glob import glob
-from typing import Union, List, Optional, Tuple, Dict
+from typing import Union, List, Optional, Tuple, Dict, Iterable
 
+from amas import AMAS
 from ete3 import PhyloTree
 import networkx as nx
 import numpy as np
@@ -278,7 +279,7 @@ def read_gene_info_as_l2n(filename: str, as_symbols: bool = False) -> Dict[str, 
         "68161at40674": "POLH" if as_symbols else ("DNA polymerase eta (POLH)" if as_symbols is None else "DNA polymerase eta"),
         "71251at40674": "SELE" if as_symbols else ("Selectin E (SELE)" if as_symbols is None else "Selectin E"),
         "147514at40674": "ALKBH4" if as_symbols else ("alkB homolog 4, lysine demethylase (ALKBH4)" if as_symbols is None else "alkB homolog 4, lysine demethylase"),
-        "70809at40674": "MARCHF10" if as_symbols else ("Testis secretory sperm-binding protein Li 228n (ALKBH4)" if as_symbols is None else "Testis secretory sperm-binding protein Li 228n")
+        "70809at40674": "MARCHF10" if as_symbols else ("Testis secretory sperm-binding protein Li 228n (MARCHF10)" if as_symbols is None else "Testis secretory sperm-binding protein Li 228n")
     }  # FIXME: Update the master file to include these builtins
     with open(filename, 'r') as f:
         first = True
@@ -471,6 +472,19 @@ async def clean_fasta(treefile: str, fastafile: str, clean_out: str = None):
             new_records.append(r)
 
     write_records(clean_out, new_records)
+
+
+def concat(in_files: Iterable[str], partitions_file: str, out_file: str):
+    alignment = AMAS.MetaAlignment(data_type='aa', in_format='fasta', concat_out=out_file, in_files=in_files,
+                                   part_format='raxml', command='concat')
+
+    if osp.exists(out_file):
+        os.remove(out_file)
+    if osp.exists(partitions_file):
+        os.remove(partitions_file)
+
+    alignment.write_concat("fasta")
+    alignment.write_partitions(partitions_file, 'raxml')
 
 
 async def align(fastafile: str, outputfile: str):
@@ -1318,8 +1332,8 @@ class ErcWorkspace:
                     continue
                 concat_entry = self.concatenated[f]
                 print("Concatenation: ", f, concat_entry)
-                await concat([osp.join(self.directory, 'trim', osp.basename(e)) for e in concat_entry[0]],
-                             concat_entry[1], osp.join(self.directory, 'trim', f))
+                concat([osp.join(self.directory, 'trim', osp.basename(e)) for e in concat_entry[0]],
+                        concat_entry[1], osp.join(self.directory, 'trim', f))
 
             await archive_directory(osp.join(self.directory, 'aligns'), "aligns.tar.bz2")
 

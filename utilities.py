@@ -197,7 +197,7 @@ def color_from_custom_map(pct: float, cmap: Dict[float, Tuple[int, int, int]]) -
     return hex
 
 
-def graphviz_network_plot(net: nx.Graph, output: str, highlight: Dict[str, str] = dict(), dot: bool = False,
+def graphviz_network_plot(net: nx.Graph, output: str, highlight: Dict[str, str] = dict(), circo: bool = False,
                           highlight_by_font: bool = False):
     # output: a png file
     # Requires pygraphviz
@@ -211,7 +211,7 @@ def graphviz_network_plot(net: nx.Graph, output: str, highlight: Dict[str, str] 
     A = nx.nx_agraph.to_agraph(net)
     A.graph_attr.update(strict=False, overlap=False, splines='true')
     A.node_attr['style'] = 'filled'
-    if dot:
+    if circo:
         A.layout(prog="circo")
     else:
         A.layout()
