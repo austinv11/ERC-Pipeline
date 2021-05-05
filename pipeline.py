@@ -487,7 +487,7 @@ def concat(in_files: Iterable[str], partitions_file: str, out_file: str):
     alignment.write_partitions(partitions_file, 'raxml')
 
 
-async def align(fastafile: str, outputfile: str):
+async def align(fastafile: str, outputfile: str, threads: int = 5):
     """
     Aligns a file.
 
@@ -500,7 +500,7 @@ async def align(fastafile: str, outputfile: str):
         outputfile = fastafile
 
     # NOTE: --anysymbol allows the U symbol to be used in protein seqs https://mafft.cbrc.jp/alignment/software/anysymbol.html
-    await async_call(f"mafft --maxiterate 1000 --localpair --anysymbol --thread 5 --out {outputfile} {fastafile}")
+    await async_call(f"mafft --maxiterate 1000 --localpair --anysymbol --thread {threads} --out {outputfile} {fastafile}")
 
     assert osp.exists(outputfile)
 
@@ -627,7 +627,7 @@ async def iqtree2(alignment: str,
         safe_delete(base + ".splits.nex")  # Split info
 
 
-async def protein_tree(alignment: str, topology: str, output: str, partition_file: str = None):
+async def protein_tree(alignment: str, topology: str, output: str, partition_file: str = None, cores: int = 5):
     """
     Generates a tree using iqtree.
 
@@ -637,7 +637,7 @@ async def protein_tree(alignment: str, topology: str, output: str, partition_fil
     """
     try:
         if not output or not osp.exists(output):
-            await iqtree2(alignment, topology, model="LG+F+G+I", output=output, ancestral_states=True, partitions_file=partition_file)
+            await iqtree2(alignment, topology, model="LG+F+G+I", output=output, ancestral_states=True, partitions_file=partition_file, cpus=cores)
     except Exception as e:
         print(f"WARNING: Could not generate tree for {alignment}!", flush=True)
         traceback.print_exc()
@@ -1191,7 +1191,8 @@ class ErcWorkspace:
     def __init__(self, directory: str, timetree: str, segmented: bool = False, segment_size: int = 10,
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
                  sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
-                 taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict()):
+                 taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict(),
+                 cores: int = 4):
         self.timetree = timetree
         self.aligns = []
         self.paired_aligns = []
@@ -1207,6 +1208,10 @@ class ErcWorkspace:
         self.taxon_set = taxon_set
         self.time_corrected = time_corrected
         self.id2name = id2name
+        self.cores = cores
+        # Currently hard coded to do a max of 4 jobs at a time
+        self.jobs = min(self.cores, 4)
+        self.cores_per_job = max(self.cores // self.jobs, 1)
 
         safe_mkdir(directory)
         safe_mkdir(osp.join(directory, 'cleaned'))
@@ -1289,9 +1294,9 @@ class ErcWorkspace:
                 align_names.append(osp.basename(pair[1]))
 
         if not osp.exists(osp.join(self.directory, 'aligns.tar.bz2')):
-            for aligns in chunks(self.aligns, 4):
+            for aligns in chunks(self.aligns, self.jobs):
                 await asyncio.gather(*[clean_fasta(self.timetree, f, osp.join(self.directory, 'cleaned', osp.basename(f))) for f in aligns if f not in self.concatenated])
-            for aligns in chunks(self.paired_aligns, 4):
+            for aligns in chunks(self.paired_aligns, self.jobs):
                 await asyncio.gather(*[clean_fasta(self.timetree, f[0], osp.join(self.directory, 'cleaned', osp.basename(f[0]))) for f in aligns if f[0] not in self.concatenated])
                 await asyncio.gather(*[clean_fasta(self.timetree, f[1], osp.join(self.directory, 'cleaned', osp.basename(f[1]))) for f in aligns if f[1] not in self.concatenated])
 
@@ -1299,7 +1304,7 @@ class ErcWorkspace:
             for key, val in self.concatenated.items():
                 aligns = [a for a in val[0] if osp.basename(a) not in align_names and osp.basename(a) not in concat_align_names]
                 concat_align_names += [osp.basename(a) for a in aligns]
-                for als in chunks(aligns, 4):
+                for als in chunks(aligns, self.jobs):
                     await asyncio.gather(*[clean_fasta(self.timetree, f, osp.join(self.directory, 'cleaned', osp.basename(f))) for f in als])
 
         if not osp.exists(osp.join(self.directory, 'aligns.tar.bz2')):
@@ -1308,14 +1313,15 @@ class ErcWorkspace:
                     if f not in self.concatenated:
                         shutil.copy(osp.join(self.directory, 'cleaned', f), osp.join(self.directory, 'aligns', f))
             else:
-                for aligns in chunks(align_names + concat_align_names, 4):
+                for aligns in chunks(align_names + concat_align_names, self.jobs):
                     await asyncio.gather(*[align(osp.join(self.directory, 'cleaned', f),
-                                                 osp.join(self.directory, 'aligns', f)) for f in aligns if f not in self.concatenated])
+                                                 osp.join(self.directory, 'aligns', f),
+                                                 self.cores_per_job) for f in aligns if f not in self.concatenated])
             shutil.rmtree(osp.join(self.directory, 'cleaned'))
 
         to_remove = set()  # Remove seqs only composed of gaps
         if not osp.exists(osp.join(self.directory, 'trim.tar.bz2')):
-            for aligns in chunks(align_names + concat_align_names, 4):
+            for aligns in chunks(align_names + concat_align_names, self.jobs):
                 if self.skip_trim:
                     for f in aligns:  # Fake trimming
                         if f not in self.concatenated:
@@ -1343,33 +1349,36 @@ class ErcWorkspace:
             if len(self.concatenated) > 0:
                 raise AssertionError("Concatenation not supported with segERCs!")
             if not osp.exists(osp.join(self.directory, 'pruned.tar.bz2')):
-                for aligns in chunks(align_names, 4):
+                for aligns in chunks(align_names, self.jobs):
                     await asyncio.gather(*[self.segment(a) for a in aligns])
                     for align_file in aligns:
-                        for segments in chunks([f for f in os.listdir(osp.join(self.directory, 'segments')) if align_file in f], 4):
+                        for segments in chunks([f for f in os.listdir(osp.join(self.directory, 'segments')) if align_file in f], self.jobs):
                             await asyncio.gather(*[prune(osp.join(self.directory, 'segments', f), self.timetree,
                                                          osp.join(self.directory, 'pruned', f)) for f in segments])
 
             for align_file in align_names:
-                for segments in chunks([f for f in os.listdir(osp.join(self.directory, 'segments')) if align_file in f], 8):
+                for segments in chunks([f for f in os.listdir(osp.join(self.directory, 'segments')) if align_file in f], self.jobs):
                     await asyncio.gather(*[protein_tree(osp.join(self.directory, 'segments', f),
                                                         osp.join(self.directory, 'pruned', f),
-                                                        osp.join(self.directory, 'tree', f + '.pred')) for f in segments if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
+                                                        osp.join(self.directory, 'tree', f + '.pred'),
+                                                        cores=self.cores_per_job) for f in segments if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
         else:
             if not osp.exists(osp.join(self.directory, 'pruned.tar.bz2')):
-                for aligns in chunks(align_names, 4):
+                for aligns in chunks(align_names, self.jobs):
                     await asyncio.gather(*[prune(osp.join(self.directory, 'trim', f), self.timetree,
                                                  osp.join(self.directory, 'pruned', f)) for f in aligns])
 
-            for aligns in chunks([n for n in align_names if n not in self.concatenated], 8):
-                await asyncio.gather(*[protein_tree(osp.join(self.directory, 'trim', f),
-                                                    osp.join(self.directory, 'pruned', f),
-                                                    osp.join(self.directory, 'tree', f + '.pred')) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
-            for aligns in chunks(list(self.concatenated.keys()), 8):
+            for aligns in chunks([n for n in align_names if n not in self.concatenated], self.jobs):
                 await asyncio.gather(*[protein_tree(osp.join(self.directory, 'trim', f),
                                                     osp.join(self.directory, 'pruned', f),
                                                     osp.join(self.directory, 'tree', f + '.pred'),
-                                                    self.concatenated[f][1]) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
+                                                    cores=self.cores_per_job) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
+            for aligns in chunks(list(self.concatenated.keys()), self.jobs):
+                await asyncio.gather(*[protein_tree(osp.join(self.directory, 'trim', f),
+                                                    osp.join(self.directory, 'pruned', f),
+                                                    osp.join(self.directory, 'tree', f + '.pred'),
+                                                    self.concatenated[f][1],
+                                                    cores=self.cores_per_job) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
 
         await archive_directory(osp.join(self.directory, 'trim'), 'trim.tar.bz2')
         await archive_directory(osp.join(self.directory, 'pruned'), 'pruned.tar.bz2')
@@ -1441,7 +1450,7 @@ class ErcWorkspace:
         del all_trees
         del completed
 
-        for filepairs in chunks(tree_combos, 4):
+        for filepairs in chunks(tree_combos, self.jobs):
             results = await asyncio.gather(*[generate_erc(self.timetree, osp.join(self.directory, 'tree', f1),
                                                           osp.join(self.directory, 'tree', f2),
                                                           self.internal_requirement,

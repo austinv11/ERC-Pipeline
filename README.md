@@ -62,6 +62,8 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
 * If you want to only run ERCs on specific pairs of proteins, you can pass the 
   `--align-pair /path/to/align1.fasta /path/to/align2.fasta` option as many times as needed.
 
+* To specify the number of CPU cores to run with, use the `-n` argument.
+
 * If your sequence data are already prepared, you can use `--skip-align` and `--skip-trim` to skip alignment and 
   trimming of alignments, respectively.
   
@@ -103,6 +105,7 @@ Definitions of the additional optional arguments;
 * taxon_set: Pass a list of taxa to perform calculations with, by default all taxa are considered.
 * time_corrected: If True, instead of standard Spearman's test, run Spearman's partial correlations controlling for time.
 * id2name: A dictionary that if passed, will be used to convert protein ids to readable names in outputs.
+* cores: Number of cores to use for calculations.
 
 Include previously run ERCs (assuming you ran the pipeline in directory: `old/erc_dir`):
 ```python

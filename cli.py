@@ -30,14 +30,24 @@ FASTA_ENDINGS = ["fa", "faa", "fs", "fasta"]
 @click.option("--skip-trim", is_flag=True, help="Assume the sequences have already been trimmed.")
 @click.option("--id2name", default=None,
               help="Pass a tab-separated file with 2 columns representing: 'alignment_identifier' and 'readable_name', respectively, including a header line. This is used for exporting the resultant matrix.")
+@click.option("-n", default=0, type=int, help="The number of CPU cores to attempt to utilize. "
+                                              "Defaults to 4 or the max number of cores availble, whichever is lower. "
+                                              "Set to -1 to use all cores.")
 def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool,
-         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, id2name: str):
+         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, id2name: str, n: int):
     try_hook_uvloop()
     override_sys_out("ERC")
 
     assert osp.exists(timetree)
 
-    arg_mods = dict()
+    all_cores = os.cpu_count() or 4
+    if n == 0:
+        n = min(4, all_cores)
+    elif n < 0:
+        n = all_cores
+
+    arg_mods = {'cores': n}
+
     if erc_type == "bt":
         arg_mods['time_corrected'] = True
     elif erc_type == "20my":
