@@ -1496,7 +1496,9 @@ class ErcWorkspace:
                 grouped[key].append(res)
 
             for (input1, input2) in grouped.keys():
-                res_name = f"{osp.basename(input1).split('.')[0]}_vs_{osp.basename(input2).split('.')[0]}"
+                basename1 = osp.basename(input1).split(".")[0]
+                basename2 = osp.basename(input2).split(".")[0]
+                res_name = f"{self.id2name.get(basename1, basename1)}_vs_{self.id2name.get(basename2, basename2)}"
                 values = grouped[(input1, input2)]
                 values: List[SegmentedERC] = list(sorted(values,
                                      key=lambda res: (int(res.file1_range.split("_")[0]) if res.is_file1_segmented else 0,
@@ -1567,6 +1569,12 @@ class ErcWorkspace:
 
                 file1_cols = list(sorted([n for n in connections.nodes if "file1_" in n], key=lambda n: int(n.split("_")[1])))
                 file2_cols = list(sorted([n for n in connections.nodes if "file2_" in n], key=lambda n: int(n.split("_")[1])))
+
+                file1_base = osp.basename(file1_base).split(".")[0]
+                file2_base = osp.basename(file2_base).split(".")[0]
+                file1_base = self.id2name.get(file1_base, file1_base)
+                file2_base = self.id2name.get(file2_base, file2_base)
+
                 with open(osp.join(self.directory, 'segmented_ercs', res_name + ".mat.p.tsv"), 'w') as f:
                     f.write(f"\"{file1_base}:\n{file2_base} V\"\t")
                     f.write("\t".join(file1_cols))
