@@ -23,7 +23,7 @@ run the pipeline. Just note that `pygraphviz` is required for network diagrams.
 All R packages are optional. They can be installed using the `install.packages()` function in base R.
 
 * If using time-corrected partial correlation calculations, `ppcor`
-* If using any of the `generate_figs.R` script code, `ggplot2, readxl, writexl, ggvenn, dplyr, gridExtra, ape, picante, EnvStats, Cairo (on Windows)` 
+* If using any of the `generate_figs.R` script code, `ggplot2, readxl, writexl, ggvenn, dplyr, gridExtra, ape, picante, EnvStats, cowplot, patchwork, and Cairo` 
 
 ### External Tooling Requirements
 All of the following are *required* to be installed.

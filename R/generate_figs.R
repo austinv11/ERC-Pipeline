@@ -1,7 +1,9 @@
+# Code to generate supplemental figures
+
 library(ggplot2)
 library(readxl)
 library(writexl)
-# library(nVennR)
+library(nVennR)
 library(ggvenn)
 library(dplyr)
 library(gridExtra)
@@ -9,6 +11,8 @@ library(ape)
 library(picante)
 library(Cairo)
 library(EnvStats)
+library(cowplot)
+library(patchwork)
 
 options(digits = 3)
 CairoWin()
@@ -72,15 +76,20 @@ plot_ace2_xy <- function(protein) {
   
   plot1 <- ggplot(full_df, aes(x = `ACE2 Rate Rank`, y = `Prot Rate Rank`, color=order)) + 
     geom_point()+ scale_color_manual("Order", values = c("purple", "blue", "#00BA38", "black", "red", "#E58700")) +
-    ggtitle(paste("Original Branch Data (ACE2 vs ", protein, ")", sep = "")) + ylab(paste(protein, "Rate Rank")) + geom_smooth(color = "black", size = 1, method = "lm", se = FALSE)
+    ggtitle(paste("Original Branch Data (ACE2 vs ", protein, ")", sep = "")) + ylab(paste(protein, "Rate Rank")) + geom_smooth(color = "black", size = 1, method = "lm", se = FALSE) +
+    theme_half_open() +
+    background_grid()
+  
   plot2 <- ggplot(mya_df, aes(x = `ACE2 Rate Rank`, y = `Prot Rate Rank`, color=order))  + 
     geom_point()+ scale_color_manual("Order", values = c("purple", "blue", "#00BA38", "black", "red", "#E58700")) +
-    ggtitle(paste("30MY Branch Data (ACE2 vs ", protein, ")", sep = "")) + ylab(paste(protein, "Rate Rank")) + geom_smooth(color = "black", size = 1, method = "lm", se = FALSE)
+    ggtitle(paste("30MY Branch Data (ACE2 vs ", protein, ")", sep = "")) + ylab(paste(protein, "Rate Rank")) + geom_smooth(color = "black", size = 1, method = "lm", se = FALSE) +
+    theme_half_open() +
+    background_grid()
 
-  return(grid.arrange(plot1, plot2, ncol=2))
+  return(plot1 | plot2)
 }
 
-plot_time_xy <- function(protein) {
+plot_time_xy <- function(protein, return_indiv=FALSE) {
   full_df <- read_excel(paste("fig_data", "btime_xys",
                               paste(protein, "_btime_data.xlsx", sep = ""),
                               sep = "/"), sheet = "Full Data")
@@ -113,23 +122,35 @@ plot_time_xy <- function(protein) {
     )
   )
   
+  full_label <- substitute(
+    paste(rho, " = ", estimate, ", P = ", pvalue),
+    list(estimate = signif(stats_df[stats_df$Treatment == 'Full Taxa',c(2, 3)][[1]], 2), pvalue = signif(stats_df[stats_df$Treatment == 'Full Taxa',c(2, 3)][[2]], 2))
+  )
+  my_label <- substitute(
+    paste(rho, " = ", estimate, ", P = ", pvalue),
+    list(estimate = signif(stats_df[stats_df$Treatment == '30MY Taxa',c(2, 3)][[1]], 2), pvalue = signif(stats_df[stats_df$Treatment == '30MY Taxa',c(2, 3)][[2]], 2))
+  )
+  
   plot1 <- ggplot(full_df, aes(x = `Time`, y = `Rate`, color=order)) + 
     geom_point()+ scale_color_manual("Order", values = c("purple", "blue", "#00BA38", "black", "red", "#E58700")) +
-    ggtitle(paste("Original Branch Data (Time vs ", protein, ")", sep = "")) + ylab(paste(protein, "Rate")) +
-    xlim(0, 200) +
-    labs(caption=paste("rho=", stats_df[stats_df$Treatment == 'Full Taxa',c(2, 3)][[1]],
-                       " p=", stats_df[stats_df$Treatment == 'Full Taxa',c(2, 3)][[2]], sep = "")) + geom_smooth(color = "black", size = 0.75, method = "lm", se = FALSE, linetype="dashed")
+    ggtitle(paste("Original Branch Data (", protein, " Rate)", sep = "")) + ylab(paste(protein, "Rate")) +
+    xlim(0, 200) + ylim(0, max(full_df$Rate)*1.25) + xlab("Terminal Branch Time (MY)") +
+    geom_smooth(color = "black", size = 0.75, method = "lm", se = FALSE, linetype="dashed") +
+    draw_label(full_label, x = 100, y = max(full_df$Rate)*1.25, size = 19, fontface="bold") +
+    theme_half_open(font_size=19, rel_large=0.8) 
   plot2 <- ggplot(mya_df, aes(x = `Time`, y = `Rate`, color=order))  + 
     geom_point()+ scale_color_manual("Order", values = c("purple", "blue", "#00BA38", "black", "red", "#E58700")) +
-    ggtitle(paste("30MY Branch Data (Time vs ", protein, ")", sep = "")) + ylab(paste(protein, "Rate")) +
-    xlim(0, 200) + 
-    labs(caption=paste("rho=", stats_df[stats_df$Treatment == '30MY Taxa',c(2, 3)][[1]],
-                       " p=", stats_df[stats_df$Treatment == '30MY Taxa',c(2, 3)][[2]], sep = "")) + geom_smooth(color = "black", size = 0.75, method = "lm", se = FALSE, linetype="dashed")
+    ggtitle(paste("30MY Branch Data (", protein, " Rate)", sep = "")) + ylab(paste(protein, "Rate")) +
+    xlim(0, 200) + ylim(0, max(mya_df$Rate)*1.25) + xlab("Terminal Branch Time (MY)") +
+    geom_smooth(color = "black", size = 0.75, method = "lm", se = FALSE, linetype="dashed") +
+    draw_label(my_label, x = 100, y = max(mya_df$Rate)*1.25, size = 19, fontface="bold") +
+    theme_half_open(font_size=19, rel_large=0.8) 
   
-  ggsave(paste("figs/", protein, "_vs_time_0MY.png", sep = ""), plot=plot1, type="cairo-png")
-  ggsave(paste("figs/", protein, "_vs_time_30MY.png", sep = ""), plot=plot2, type="cairo-png")
-  
-  return(grid.arrange(plot1, plot2, ncol=2))
+  if (return_indiv) {
+    return(list(full.plot=plot1, my.plot=plot2))
+  } else {
+    return(plot1 | plot2)
+  }
 }
 
 
@@ -302,7 +323,9 @@ resid_to_btime_corr <- function(protein) {
   full.plot <- ggplot(full_df, aes(x = Time, y = Residual)) + geom_point() +
     ggtitle(paste("Time vs", prot, "Residuals")) + ylab("Rate vs Time Residuals") +
     xlab("Time") + ylim(-0.008, 0.008) +
-    geom_smooth(color = "black", size = 1, method = "lm", se = FALSE)
+    geom_smooth(color = "black", size = 1, method = "lm", se = FALSE) +
+    theme_half_open() +
+    background_grid()
   #mya.plot <- ggplot(mya_df, aes(x = Time, y = Residual)) + geom_point() +
    # ggtitle(paste("Time vs", prot, "Residuals")) + ylab("Rate vs Time Residuals") +
     #xlab("Time Rank") + ylim(-0.008, 0.008) +
@@ -326,9 +349,15 @@ resid_to_resid_XY <- function(protein) {
   plot <- ggplot(full_df, aes(x = Residual.1, y = Residual.2)) + geom_point() +
     ggtitle(paste("ACE2 vs", protein, "Residuals")) + ylab(paste(protein, "vs Time Residuals")) +
     xlab("ACE2 vs Time Residuals") + 
-    geom_smooth(color = "black", size = 1, method = "lm", se = FALSE)
+    geom_smooth(color = "black", size = 1, method = "lm", se = FALSE) +
+    theme_half_open() +
+    background_grid()
   
   return(list(plot=plot))
+}
+
+make_p_label <- function(pval) {
+    return(paste("P=", signif(pval, 2), sep = ""))
 }
 
 compare_extended_branches <- function(protein) {
@@ -364,16 +393,26 @@ compare_extended_branches <- function(protein) {
   combined$Treatment <- factor(combined$Treatment, 
                                levels = c("0MY vs 20MY", "20MY vs 30MY", "0MY vs 30MY"))
   
-  plot <- ggplot(combined, aes(x=Treatment, y=RateDiff)) + geom_boxplot() + 
-    ggtitle(paste("Difference of Extended Branch Rates of", protein)) + 
-    ylab("Difference in Rate") + xlab("Branches Compared") + 
-    theme(axis.text.x=element_text(size=10)) + stat_n_text()
-  
   full_vs_20.test <- wilcox.test(full_vs_20$Rate.x, full_vs_20$Rate.y, paired = TRUE)
   full_vs_30.test <- wilcox.test(full_vs_30$Rate.x, full_vs_30$Rate.y, paired = TRUE)
   `20_vs_30.test` <- wilcox.test(`20_vs_30`$Rate.x, `20_vs_30`$Rate.y, paired = TRUE)
-  ggsave(paste("figs/", protein, "_btime_extended.png", sep = ""), plot=plot, type="cairo-png")
   
+  plot <- ggplot(combined, aes(x=Treatment, y=RateDiff)) + geom_boxplot() + geom_hline(yintercept = 0, linetype = "dashed", color="blue") +
+    ggtitle(paste("Difference of Extended Branch Rates of", protein)) + 
+    ylab("Difference in Rate") + xlab("Branches Compared") + 
+    theme(axis.text.x=element_text(size=10)) + stat_n_text(size = 6) +
+    stat_summary(geom = 'text', size = 6,
+                 label = c(make_p_label(full_vs_20.test$p.value),
+                           make_p_label(`20_vs_30.test`$p.value),
+                           make_p_label(full_vs_30.test$p.value)), 
+                 vjust = -1, fun.y = function(y) {
+                   range.y <- range(combined$RateDiff, na.rm = TRUE)
+                   pos <- range.y[1] - diff(range.y) * 0.1 # Based on stat_n_text source
+                   return(pos)
+                 }) +
+    theme_half_open(font_size=19, rel_large=0.9) +
+    background_grid(major = "y")
+
   
   return(list(full.20.p=full_vs_20.test$p.value,
               full.30.p=full_vs_30.test$p.value,
@@ -387,7 +426,6 @@ dist_of_rate_diffs <- function() {
   mya30_df <-read_excel("fig_Data/rate_bt_corr/btime_rate_data.xlsx", sheet = "30MY Rates")
   
   test_results <- make_empty_df(c("Protein", "MY0.MY20.p", "MY20.MY30.p", "MY0.MY30.p"))
-  
   for (prot in unique(mya30_df$Protein)) {
     full <- full_df[which(full_df$Protein == prot),]
     mya20 <- mya20_df[which(mya20_df$Protein == prot),]
@@ -419,7 +457,10 @@ dist_of_rate_diffs <- function() {
       Protein=prot,
       MY0.MY20.p=full_vs_20.test,
       MY20.MY30.p=`20_vs_30.test`,
-      MY0.MY30.p=full_vs_30.test
+      MY0.MY30.p=full_vs_30.test,
+      MY0.MY20.median.change=median(full_vs_20$RateDiff),
+      MY20.MY30.median.change=median(`20_vs_30`$RateDiff),
+      MY0.MY30.median.change=median(full_vs_30$RateDiff)
     ))
   }
   
@@ -428,20 +469,60 @@ dist_of_rate_diffs <- function() {
   test_results$MY0.MY30.p.fdr <- p.adjust(test_results$MY0.MY30.p, method = "BH")
   test_results$MY20.MY30.p.fdr <- p.adjust(test_results$MY20.MY30.p, method = "BH")
   
-  plot1 <- ggplot(test_results, aes(x = MY0.MY20.p.fdr)) + geom_histogram(binwidth = 0.05) +
-    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, binwidth = 0.05) + 
-    ggtitle("Paired Wilcoxon Tests p-values of change in protein rate, 0MY vs 20MY") + 
-    xlab("Wilcoxon p-value (FDR Adjusted)") + geom_vline(xintercept=0.025, col='red') + ylab("Number of Proteins")
-  plot2 <- ggplot(test_results, aes(x = MY20.MY30.p.fdr)) + geom_histogram(binwidth = 0.05) +
-    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, binwidth = 0.05) + 
-    ggtitle("Paired Wilcoxon Tests p-values of change in protein rate, 20MY vs 30MY") + 
-    xlab("Wilcoxon p-value (FDR Adjusted)") + geom_vline(xintercept=0.025, col='red') + ylab("Number of Proteins")
-  plot3 <- ggplot(test_results, aes(x = MY0.MY30.p.fdr)) + geom_histogram(binwidth = 0.05) +
-    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, binwidth = 0.05) + 
-    ggtitle("Paired Wilcoxon Tests p-values of change in protein rate, 0MY vs 30MY") + 
-    xlab("Wilcoxon p-value (FDR Adjusted)") + geom_vline(xintercept=0.025, col='red') + ylab("Number of Proteins")
   
-  return(list(MY0.MY20=plot1, MY20.MY30=plot2, MY0.MY30=plot3, test.data=test_results))
+  breaks <- sapply(seq(0, 1, 0.05), function(x){return(ifelse(x == 1, x, x))})
+  plot1.p <- ggplot(test_results, aes(x = MY0.MY20.p)) + geom_histogram(breaks = breaks, fill="#2596be", alpha=0.85) +
+    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, breaks = breaks) + 
+    ggtitle("Paired Wilcoxon Tests P-values of Change in Protein Rate, 0MY vs 20MY") + 
+    xlab("Wilcoxon P-value") + geom_vline(xintercept=0.05, col='red') + ylab("Number of Proteins") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    theme_half_open() +
+    background_grid(major = "y")
+  plot2.p <- ggplot(test_results, aes(x = MY20.MY30.p)) + geom_histogram(breaks = breaks, fill="#2596be", alpha=0.85) +
+    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, breaks = breaks) + 
+    ggtitle("Paired Wilcoxon Tests P-values of Change in Protein Rate, 20MY vs 30MY") + 
+    xlab("Wilcoxon P-value") + geom_vline(xintercept=0.05, col='red') + ylab("Number of Proteins") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    theme_half_open() +
+    background_grid(major = "y")
+  plot3.p <- ggplot(test_results, aes(x = MY0.MY30.p)) + geom_histogram(breaks = breaks, fill="#2596be", alpha=0.85) +
+    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, breaks = breaks) + 
+    ggtitle("Paired Wilcoxon Tests P-values of Change in Protein Rate, 0MY vs 30MY") + 
+    xlab("Wilcoxon P-value") + geom_vline(xintercept=0.05, col='red') + ylab("Number of Proteins") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    theme_half_open() +
+    background_grid(major = "y")
+  
+  plot1 <- ggplot(test_results, aes(x = MY0.MY20.p.fdr)) + geom_histogram(breaks = breaks, fill="#2596be", alpha=0.85) +
+    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, breaks = breaks) + 
+    ggtitle("Paired Wilcoxon Tests P-values of Change in Protein Rate, 0MY vs 20MY") + 
+    xlab("Wilcoxon P-value (FDR Adjusted)") + geom_vline(xintercept=0.05, col='red') + ylab("Number of Proteins") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    theme_half_open() +
+    background_grid(major = "y")
+  plot2 <- ggplot(test_results, aes(x = MY20.MY30.p.fdr)) + geom_histogram(breaks = breaks, fill="#2596be", alpha=0.85) +
+    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, breaks = breaks) + 
+    ggtitle("Paired Wilcoxon Tests P-values of Change in Protein Rate, 20MY vs 30MY") + 
+    xlab("Wilcoxon P-value (FDR Adjusted)") + geom_vline(xintercept=0.05, col='red') + ylab("Number of Proteins") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    theme_half_open() +
+    background_grid(major = "y")
+  plot3 <- ggplot(test_results, aes(x = MY0.MY30.p.fdr)) + geom_histogram(breaks = breaks, fill="#2596be", alpha=0.85) +
+    stat_bin(aes(y=..count.., label=..count..), geom="text", vjust=-.5, breaks = breaks) + 
+    ggtitle("Paired Wilcoxon Tests P-values of Change in Protein Rate, 0MY vs 30MY") + 
+    xlab("Wilcoxon P-value (FDR Adjusted)") + geom_vline(xintercept=0.05, col='red') + ylab("Number of Proteins") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    theme_half_open() +
+    background_grid(major = "y")
+  
+  return(list(ORIG=list(MY0.MY20=plot1.p, MY20.MY30=plot2.p, MY0.MY30=plot3.p, test.data=test_results),
+    FDR=list(MY0.MY20=plot1, MY20.MY30=plot2, MY0.MY30=plot3, test.data=test_results)))
 }
 
 ace2_erc_comparison <- function() {
@@ -466,8 +547,29 @@ make_empty_df <- function(columns) {
   return(df)
 }
 
-PROTS = c("ACE2", "GEN1", "XCR1", "CLU", "IFNAR2", "APOB", "PLA2R1", "CAT", 
-          "CERS3")
+correlate_resids_to_time <- function() {
+  df <- read_excel("fig_Data/rate_bt_corr/btime_rate_data.xlsx", sheet = "Orig Rates")
+  prots <- unique(df$Protein)
+  results <- make_empty_df(c("Protein", "Rho", "P"))
+  for (i in 1:length(prots)) {
+    data <- df[which(as.character(df$Protein) == as.character(prots[[i]])),]
+    model <- lm(`Rate` ~ `Time`, data = data)
+    
+    model_df <- data.frame(Residual=resid(model), Time=data$`Time`)
+    
+    full.test <- cor.test(model_df$Residual, model_df$Time, method="spearman")
+    
+    results <- rbind(results, data.frame(
+      Protein=prots[[i]],
+      Rho=full.test$estimate,
+      P=full.test$p.value
+    ))
+  }
+  return(results)
+}
+
+PROTS = c("ACE2", "GEN1", "XCR1", "CLU", "TMEM63C", "IFNAR2", "APOB", "F5", 
+          "PLA2R1", "CAT", "CERS3")
 
 
 time_regression_df <- make_empty_df(c("Protein", "full.intercept", "full.intercept.p", "full.time", "full.time.p", "full.adj_rsq", "full.p", "full.aov.p",
@@ -639,6 +741,9 @@ ggsave("figs/pval_dist_rate_diff_MY20_MY30.png", plot=res$MY20.MY30, type="cairo
 ggsave("figs/pval_dist_rate_diff_MY0_MY30.png", plot=res$MY0.MY30, type="cairo-png")
 write_xlsx(res$test.data, "figs/branch_extension_wilcoxon_results.xlsx")
 
+
+write_xlsx(correlate_resids_to_time(), "figs/time_resids_to_time_corr.xlsx")
+
 write_xlsx(time_regression_df, "figs/time_regression.xlsx")
 write_xlsx(ace2_regression_df, "figs/ace2_regression.xlsx")
 write_xlsx(ace2_regression_coefs_df, "figs/ace2_regression_coef.xlsx")
@@ -646,4 +751,33 @@ write_xlsx(ace2_regression_no_order_df, "figs/ace2_regression_no_order.xlsx")
 write_xlsx(ace2_contrasts_df, "figs/ace2_contrasts.xlsx")
 write_xlsx(prot_resid_time_corr_df, "figs/prot_resid_time_corr.xlsx")
 write_xlsx(prot_branch_extended_df, "figs/prot_branch_extension.xlsx")
+
+# Final pub figs
+## BT-Rate plots
+ace2_res <- plot_time_xy("ACE2", TRUE)
+gen1_res <- plot_time_xy("GEN1", TRUE)
+xcr1_res <- plot_time_xy("XCR1", TRUE)
+clu_res <- plot_time_xy("CLU", TRUE)
+apob_res <- plot_time_xy("APOB", TRUE)
+ifnar2_res <- plot_time_xy("IFNAR2", TRUE)
+original_plot <- (ace2_res$full.plot | gen1_res$full.plot) / (xcr1_res$full.plot | clu_res$full.plot) / (apob_res$full.plot | ifnar2_res$full.plot)
+compare_plot <- (ace2_res$full.plot | ace2_res$my.plot) / (gen1_res$full.plot | gen1_res$my.plot) / (xcr1_res$full.plot | xcr1_res$my.plot) / (clu_res$full.plot | clu_res$my.plot)
+ggsave("final files/S3_Orig_Rate_BT.png", plot=original_plot, type="cairo-png", dpi = 300, width = 20, height = 15, units = "in")
+ggsave("final files/S4_Orig_vs_30MY_Rate_BT.png", plot=compare_plot, type="cairo-png", dpi = 300, width = 20, height = 20, units = "in")
+
+## Rate extension boxplots
+ace2_res <- compare_extended_branches("ACE2")
+gen1_res <- compare_extended_branches("GEN1")
+xcr1_res <- compare_extended_branches("XCR1")
+clu_res <- compare_extended_branches("CLU")
+apob_res <- compare_extended_branches("APOB")
+ifnar2_res <- compare_extended_branches("IFNAR2")
+
+plot <- (ace2_res$plot | gen1_res$plot) / (xcr1_res$plot | clu_res$plot) / (apob_res$plot | ifnar2_res$plot)
+ggsave("final files/S6_rate_diff_boxplots.png", plot=plot, type="cairo-png", dpi=300, width = 20, height = 20, units = "in")
+
+## P-value distributions
+res <- dist_of_rate_diffs()
+plot <- res$ORIG$MY0.MY20 / res$ORIG$MY20.MY30 / res$ORIG$MY0.MY30
+ggsave("final files/S7_wilcox_distribution.png", plot=plot, type="cairo-png", dpi=300, width = 10, height = 15, units = "in")
 
