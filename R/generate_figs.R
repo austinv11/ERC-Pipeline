@@ -1,5 +1,3 @@
-# Code to generate supplemental figures
-
 library(ggplot2)
 library(readxl)
 library(writexl)
@@ -11,6 +9,7 @@ library(ape)
 library(picante)
 library(Cairo)
 library(EnvStats)
+library(hrbrthemes)
 library(cowplot)
 library(patchwork)
 
@@ -89,6 +88,38 @@ plot_ace2_xy <- function(protein) {
   return(plot1 | plot2)
 }
 
+all_short_btime_chisqs <- function() {
+  df <- data.frame()
+  for (f in list.files(path = "fig_data/btime_xys", pattern = "xlsx")) {
+    prot <- strsplit(f, "_")[[1]][1]
+    
+    res <- short_btime_chisq(prot)
+    
+    df <- rbind(df, data.frame(
+      prot=prot,
+      full.p=res$full
+    ))
+  }
+  return(df)
+}
+
+short_btime_chisq <- function(protein) {
+  full_df <- read_excel(paste("fig_data", "btime_xys",
+                              paste(protein, "_btime_data.xlsx", sep = ""),
+                              sep = "/"), sheet = "Full Data")
+  
+  fullmod <- lm(Rate ~ Time, full_df)
+  full_df$resids <- resid(fullmod)
+  full_df$my30 <- full_df$Time < 30
+  
+  full_counts <- c(nrow(full_df[which(full_df$my30 & full_df$resids > 0),]),  # Above the line
+                   nrow(full_df[which(full_df$my30 & full_df$resids < 0),]))  # Below the line
+  # 1 df
+  fullp <- chisq.test(full_counts)$p.value
+  
+  return(list(full=fullp))
+}
+
 plot_time_xy <- function(protein, return_indiv=FALSE) {
   full_df <- read_excel(paste("fig_data", "btime_xys",
                               paste(protein, "_btime_data.xlsx", sep = ""),
@@ -136,15 +167,15 @@ plot_time_xy <- function(protein, return_indiv=FALSE) {
     ggtitle(paste("Original Branch Data (", protein, " Rate)", sep = "")) + ylab(paste(protein, "Rate")) +
     xlim(0, 200) + ylim(0, max(full_df$Rate)*1.25) + xlab("Terminal Branch Time (MY)") +
     geom_smooth(color = "black", size = 0.75, method = "lm", se = FALSE, linetype="dashed") +
-    draw_label(full_label, x = 100, y = max(full_df$Rate)*1.25, size = 19, fontface="bold") +
-    theme_half_open(font_size=19, rel_large=0.8) 
+    draw_label(full_label, x = 100, y = max(full_df$Rate)*1.25, size = 23, fontface="bold") +
+    theme_half_open(font_size=19, rel_large=0.75) 
   plot2 <- ggplot(mya_df, aes(x = `Time`, y = `Rate`, color=order))  + 
     geom_point()+ scale_color_manual("Order", values = c("purple", "blue", "#00BA38", "black", "red", "#E58700")) +
     ggtitle(paste("30MY Branch Data (", protein, " Rate)", sep = "")) + ylab(paste(protein, "Rate")) +
     xlim(0, 200) + ylim(0, max(mya_df$Rate)*1.25) + xlab("Terminal Branch Time (MY)") +
     geom_smooth(color = "black", size = 0.75, method = "lm", se = FALSE, linetype="dashed") +
-    draw_label(my_label, x = 100, y = max(mya_df$Rate)*1.25, size = 19, fontface="bold") +
-    theme_half_open(font_size=19, rel_large=0.8) 
+    draw_label(my_label, x = 100, y = max(mya_df$Rate)*1.25, size = 23, fontface="bold") +
+    theme_half_open(font_size=19, rel_large=0.75) 
   
   if (return_indiv) {
     return(list(full.plot=plot1, my.plot=plot2))
@@ -568,8 +599,7 @@ correlate_resids_to_time <- function() {
   return(results)
 }
 
-PROTS = c("ACE2", "GEN1", "XCR1", "CLU", "TMEM63C", "IFNAR2", "APOB", "F5", 
-          "PLA2R1", "CAT", "CERS3")
+PROTS = c("ACE2", "GEN1", "XCR1", "CLU", "TMEM63C", "IFNAR2", "KIF3B", "ITPRIPL2", "FAM227A", "TLR8", "COL4A4", "APOB", "PLA2R1", "CAT", "CERS3")
 
 
 time_regression_df <- make_empty_df(c("Protein", "full.intercept", "full.intercept.p", "full.time", "full.time.p", "full.adj_rsq", "full.p", "full.aov.p",
@@ -751,6 +781,7 @@ write_xlsx(ace2_regression_no_order_df, "figs/ace2_regression_no_order.xlsx")
 write_xlsx(ace2_contrasts_df, "figs/ace2_contrasts.xlsx")
 write_xlsx(prot_resid_time_corr_df, "figs/prot_resid_time_corr.xlsx")
 write_xlsx(prot_branch_extended_df, "figs/prot_branch_extension.xlsx")
+write_xlsx(all_short_btime_chisqs(), "figs/all_prot_short_btime_chisqs.xlsx")
 
 # Final pub figs
 ## BT-Rate plots
