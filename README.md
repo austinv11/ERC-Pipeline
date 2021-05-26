@@ -196,7 +196,7 @@ Convert rate data to correlations:
 from pipeline import get_rates, rates_to_correlation
 
 rate_info = await get_rates(tree_topology_object, True, None, tree1, tree2)
-rho, p = await rates_to_correlation(rate_info)
+rho, p = rates_to_correlation(rate_info)
 ```
 
 Run an enrichment analysis on protein sets:
