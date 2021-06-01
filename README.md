@@ -232,13 +232,12 @@ graphviz_network_plot(my_network, "my_network.png")
 ```
 
 ## Citations
-
-Please cite the ERC method with the following reference:
-```
-Yan, Zhichao, Gongyin Ye, and John H. Werren. "Evolutionary rate correlation between mitochondrial-encoded and mitochondria-associated nuclear-encoded proteins in insects." Molecular biology and evolution 36.5 (2019): 1022-1036.
-```
-
 Please cite this specific implementation of ERCs with the following reference:
 ```
-TODO
+Varela, Austin A., Sammy Cheng, and John H. Werren. "Evolutionary Inference Predicts Novel ACE2 Protein Interactions Relevant to COVID-19 Pathologies." bioRxiv (2021).
+```
+
+Please cite the general ERC method with the following reference:
+```
+Yan, Zhichao, Gongyin Ye, and John H. Werren. "Evolutionary rate correlation between mitochondrial-encoded and mitochondria-associated nuclear-encoded proteins in insects." Molecular biology and evolution 36.5 (2019): 1022-1036.
 ```
