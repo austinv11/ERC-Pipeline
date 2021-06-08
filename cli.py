@@ -6,7 +6,7 @@ from typing import List, Tuple
 import click
 
 from utilities import override_sys_out, try_hook_uvloop, _self_path
-from pipeline import ErcWorkspace, _20mya_cutoff, _30mya_cutoff
+from pipeline import ErcWorkspace, _20mya_cutoff, _30mya_cutoff, register_erc_datasource
 
 
 FASTA_ENDINGS = ["fa", "faa", "fs", "fasta"]
@@ -31,11 +31,14 @@ FASTA_ENDINGS = ["fa", "faa", "fs", "fasta"]
 @click.option("--archive", is_flag=True, help="Archive intermediary files (such as alignments). This function breaks the auto-resuming functionality.")
 @click.option("--id2name", default=None,
               help="Pass a tab-separated file with 2 columns representing: 'alignment_identifier' and 'readable_name', respectively, including a header line. This is used for exporting the resultant matrix.")
+@click.option("--previous-run", type=str, multiple=True,
+              help="The directory of previous runs of the pipeline to grab ERC and tree data from. You can specify multiple previous runs.")
 @click.option("-n", default=0, type=int, help="The number of CPU cores to attempt to utilize. "
                                               "Defaults to 4 or the max number of cores available, whichever is lower. "
                                               "Set to -1 to use all cores.")
 def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool,
-         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, archive: bool, id2name: str, n: int):
+         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, archive: bool, id2name: str,
+         previous_run: List[str], n: int):
     try_hook_uvloop()
     override_sys_out("ERC")
 
@@ -83,6 +86,10 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
         arg_mods["id2name"] = id2name_dict
 
     print("Starting up...")
+
+    if previous_run:
+        for run in previous_run:
+            register_erc_datasource(osp.join(run, "tree/"), osp.join(run, "ercs.csv"))
 
     workspace = ErcWorkspace(wd, timetree, **arg_mods)
 

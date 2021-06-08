@@ -70,7 +70,13 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
 * If your alignments are titled based on non-readable identifiers instead of protein names/symbols (for example: 
   OrthoDB ids), you can create a tab-separated file with 2 columns: "alignment_identifier" and "readable_name". This
   will be used to replace the original alignment names with the readable names if you pass the path to this file to the
-  argument: `--id2name /path/to/file.tsv`
+  argument: `--id2name /path/to/file.tsv`. The annotations used in the publication can be used like so: 
+  `--id2name data/id2name.tsv`
+  
+* If you have previously run the ERC-Pipeline in another directory, you can include the proteins from the previous run
+  in the current run with the `--previous-run /path/to/previous/wd` flag. You can pass it multiple times to include data
+  from multiple runs. If you wish to include the (30MY) ERCs from the publication, you can do it like this: 
+  `--previous-run data/30my_erc_results`
   
 * To automatically archive intermediate FASTA files, pass the `--archive` argument.
 
