@@ -99,7 +99,7 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
             if osp.isdir(f):
                 continue
             if f.split(".")[-1].lower() not in FASTA_ENDINGS:
-                print(f"WARNING: Skipping alignment file {f}! It does not have a fasta file ending!")
+                print(f"WARNING: Skipping sequence file {f}! It does not have a fasta file ending!")
                 continue
             workspace.add_alignment(osp.join(osp.abspath(sequences), f))
     else:

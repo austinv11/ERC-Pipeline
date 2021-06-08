@@ -48,10 +48,10 @@ All of the following are *required* to be installed.
       
 
 ## Calculating ERCs on the command line
-Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the time-scaled phylogeny is a file called
+Assuming the sequences are in a directory called `SEQUENCE_DIRECTORY` and the time-scaled phylogeny is a file called
 `PHYLOGENY.nwk` and you wish to run calculations in a directory called `OUTPUT_DIRECTORY`.
 
-`python3 cli.py --timetree PHYLOGENY.nwk --alignments ALIGNMENT_DIRECTORY --wd OUTPUT_DIRECTORY`
+`python3 cli.py --timetree PHYLOGENY.nwk --sequences SEQUENCE_DIRECTORY --wd OUTPUT_DIRECTORY`
 
 * Note that if you are using the default mammalian phylogeny, you can omit the `--timetree PHYLOGENY.nwk` argument. 
   Additionally, you would be able to use the 20MY or 30MY ERC calculations described in Varela et al 2021 using either
@@ -67,7 +67,7 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
 * If your sequence data are already prepared, you can use `--skip-align` and `--skip-trim` to skip alignment and 
   trimming of alignments, respectively.
   
-* If your alignments are titled based on non-readable identifiers instead of protein names/symbols (for example: 
+* If your sequences are titled based on non-readable identifiers instead of protein names/symbols (for example: 
   OrthoDB ids), you can create a tab-separated file with 2 columns: "alignment_identifier" and "readable_name". This
   will be used to replace the original alignment names with the readable names if you pass the path to this file to the
   argument: `--id2name /path/to/file.tsv`. The annotations used in the publication can be used like so: 
@@ -124,7 +124,7 @@ from pipeline import register_erc_datasource
 register_erc_datasource("old/erc_dir/tree/", "old/erc_dir/ercs.csv")
 ```
 
-Add alignments to the workspace:
+Add sequences to the workspace:
 ```python
 # Add alignments for all-by-all calculations
 workspace.add_alignment("path/to/alignment.fasta")
