@@ -80,6 +80,7 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
                     first = False
                     continue
                 split = l.strip().split("\t")
+                split = [s.strip().strip('"').strip("'") for s in split]
                 if len(split) < 2:
                     continue
                 id2name_dict[split[0].strip()] = split[1].strip()
