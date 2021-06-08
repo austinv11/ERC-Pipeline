@@ -76,7 +76,8 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
 * If you have previously run the ERC-Pipeline in another directory, you can include the proteins from the previous run
   in the current run with the `--previous-run /path/to/previous/wd` flag. You can pass it multiple times to include data
   from multiple runs. If you wish to include the (30MY) ERCs from the publication, you can do it like this: 
-  `--previous-run data/30my_erc_results`
+  `--previous-run data/30my_erc_results` Note: If you wish to do this with the published previous 30MY ERC data, make 
+  sure to clone this repository with git-lfs installed (https://git-lfs.github.com/).
   
 * To automatically archive intermediate FASTA files, pass the `--archive` argument.
 
