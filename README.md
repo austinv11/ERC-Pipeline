@@ -71,6 +71,8 @@ Assuming the sequences are in a directory called `ALIGNMENT_DIRECTORY` and the t
   OrthoDB ids), you can create a tab-separated file with 2 columns: "alignment_identifier" and "readable_name". This
   will be used to replace the original alignment names with the readable names if you pass the path to this file to the
   argument: `--id2name /path/to/file.tsv`
+  
+* To automatically archive intermediate FASTA files, pass the `--archive` argument.
 
 * If you want to run ERCs along pieces of the alignments, add the `--segment` argument. This can be modified using the 
   `--slide` argument, which rather than splitting the alignment into kmers, will normalize the data using a sliding 
@@ -102,6 +104,7 @@ Definitions of the additional optional arguments;
 * sliding_window: If True, ERCs run on pieces of alignments are normalized with a sliding window.
 * skip_align: If True, skip alignment of the input sequences.
 * skip_trim: If True, skip trimming of alignments.
+* archive: If True, save intermediate files into archives.
 * taxon_set: Pass a list of taxa to perform calculations with, by default all taxa are considered.
 * time_corrected: If True, instead of standard Spearman's test, run Spearman's partial correlations controlling for time.
 * id2name: A dictionary that if passed, will be used to convert protein ids to readable names in outputs.

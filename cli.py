@@ -28,13 +28,14 @@ FASTA_ENDINGS = ["fa", "faa", "fs", "fasta"]
               help="If passed, segmented ERCs are run with a sliding window (of the size passed in --kmer) instead of naively splitting alignments into kmers.")
 @click.option("--skip-align", is_flag=True, help="Assume the sequences have already been aligned.")
 @click.option("--skip-trim", is_flag=True, help="Assume the sequences have already been trimmed.")
+@click.option("--archive", is_flag=True, help="Archive intermediary files (such as alignments). This function breaks the auto-resuming functionality.")
 @click.option("--id2name", default=None,
               help="Pass a tab-separated file with 2 columns representing: 'alignment_identifier' and 'readable_name', respectively, including a header line. This is used for exporting the resultant matrix.")
 @click.option("-n", default=0, type=int, help="The number of CPU cores to attempt to utilize. "
-                                              "Defaults to 4 or the max number of cores availble, whichever is lower. "
+                                              "Defaults to 4 or the max number of cores available, whichever is lower. "
                                               "Set to -1 to use all cores.")
 def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool,
-         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, id2name: str, n: int):
+         kmer: int, slide: bool, skip_align: bool, skip_trim: bool, archive: bool, id2name: str, n: int):
     try_hook_uvloop()
     override_sys_out("ERC")
 
@@ -46,7 +47,7 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
     elif n < 0:
         n = all_cores
 
-    arg_mods = {'cores': n}
+    arg_mods = {'cores': n, 'archive': archive}
 
     if erc_type == "bt":
         arg_mods['time_corrected'] = True

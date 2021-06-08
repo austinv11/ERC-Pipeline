@@ -1192,7 +1192,7 @@ class ErcWorkspace:
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
                  sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
                  taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict(),
-                 cores: int = 4):
+                 cores: int = 4, archive: bool = False):
         self.timetree = timetree
         self.aligns = []
         self.paired_aligns = []
@@ -1209,6 +1209,7 @@ class ErcWorkspace:
         self.time_corrected = time_corrected
         self.id2name = id2name
         self.cores = cores
+        self.archive = archive
         # Currently hard coded to do a max of 4 jobs at a time
         self.jobs = min(self.cores, 4)
         self.cores_per_job = max(self.cores // self.jobs, 1)
@@ -1314,6 +1315,9 @@ class ErcWorkspace:
                         shutil.copy(osp.join(self.directory, 'cleaned', f), osp.join(self.directory, 'aligns', f))
             else:
                 for aligns in chunks(align_names + concat_align_names, self.jobs):
+                    aligns = [f for f in aligns if not osp.exists(osp.join(self.directory, 'aligns', f))]
+                    if len(aligns) == 0:
+                        continue
                     await asyncio.gather(*[align(osp.join(self.directory, 'cleaned', f),
                                                  osp.join(self.directory, 'aligns', f),
                                                  self.cores_per_job) for f in aligns if f not in self.concatenated])
@@ -1322,6 +1326,10 @@ class ErcWorkspace:
         to_remove = set()  # Remove seqs only composed of gaps
         if not osp.exists(osp.join(self.directory, 'trim.tar.bz2')):
             for aligns in chunks(align_names + concat_align_names, self.jobs):
+                aligns = [f for f in aligns if not osp.exists(osp.join(self.directory, 'trim', f))]
+                if len(aligns) == 0:
+                    continue
+
                 if self.skip_trim:
                     for f in aligns:  # Fake trimming
                         if f not in self.concatenated:
@@ -1341,7 +1349,8 @@ class ErcWorkspace:
                 concat([osp.join(self.directory, 'trim', osp.basename(e)) for e in concat_entry[0]],
                         concat_entry[1], osp.join(self.directory, 'trim', f))
 
-            await archive_directory(osp.join(self.directory, 'aligns'), "aligns.tar.bz2")
+            if self.archive:
+                await archive_directory(osp.join(self.directory, 'aligns'), "aligns.tar.bz2")
 
         align_names = [a for a in align_names if a not in to_remove]
 
@@ -1350,6 +1359,9 @@ class ErcWorkspace:
                 raise AssertionError("Concatenation not supported with segERCs!")
             if not osp.exists(osp.join(self.directory, 'pruned.tar.bz2')):
                 for aligns in chunks(align_names, self.jobs):
+                    aligns = [f for f in aligns if not osp.exists(osp.join(self.directory, 'pruned', f))]
+                    if len(aligns) == 0:
+                        continue
                     await asyncio.gather(*[self.segment(a) for a in aligns])
                     for align_file in aligns:
                         for segments in chunks([f for f in os.listdir(osp.join(self.directory, 'segments')) if align_file in f], self.jobs):
@@ -1365,6 +1377,9 @@ class ErcWorkspace:
         else:
             if not osp.exists(osp.join(self.directory, 'pruned.tar.bz2')):
                 for aligns in chunks(align_names, self.jobs):
+                    aligns = [f for f in aligns if not osp.exists(osp.join(self.directory, 'pruned', f))]
+                    if len(aligns) == 0:
+                        continue
                     await asyncio.gather(*[prune(osp.join(self.directory, 'trim', f), self.timetree,
                                                  osp.join(self.directory, 'pruned', f)) for f in aligns])
 
@@ -1380,10 +1395,11 @@ class ErcWorkspace:
                                                     self.concatenated[f][1],
                                                     cores=self.cores_per_job) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
 
-        await archive_directory(osp.join(self.directory, 'trim'), 'trim.tar.bz2')
-        await archive_directory(osp.join(self.directory, 'pruned'), 'pruned.tar.bz2')
-        if self.segmented:
-            await archive_directory(osp.join(self.directory, 'segments'), 'segments.tar.bz2')
+        if self.archive:
+            await archive_directory(osp.join(self.directory, 'trim'), 'trim.tar.bz2')
+            await archive_directory(osp.join(self.directory, 'pruned'), 'pruned.tar.bz2')
+            if self.segmented:
+                await archive_directory(osp.join(self.directory, 'segments'), 'segments.tar.bz2')
 
         past_trees = set()
 
