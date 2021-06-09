@@ -262,92 +262,116 @@ ODOCOILEUS_VIRGINIANUS
 BOS_GRUNNIENS""".splitlines()
 
 
-def read_gene_info_as_l2n(filename: str, as_symbols: bool = False) -> Dict[str, str]:
-    """
-    Reads a gene info list file to make a label -> name dict.
-    :param filename: The file.
-    :param as_symbols: Whether to return symbols or full names. If none, both are combined
-    :return: The l2n dict.
-    """
-    l2n = {
-        "209332at40674": "APOA1" if as_symbols else ("Apolipoprotein A-I (APOA1)" if as_symbols is None else "Apolipoprotein A-I"),
-        "91651at40674": "CETP" if as_symbols else ("Cholesteryl ester transfer protein (CETP)" if as_symbols is None else "Cholesteryl ester transfer protein"),
-        "209652at40674": "APOC1" if as_symbols else ("Apolipoprotein C-I (APOC1)" if as_symbols is None else "Apolipoprotein C-I"),
-        "158878at40674": "VEGFA" if as_symbols else ("Vascular endothelial growth factor A (VEGFA)" if as_symbols is None else "Vascular endothelial growth factor A"),
-        "coag9": "F9" if as_symbols else ("Coagulation Factor 9 (F9)" if as_symbols is None else "Coagulation Factor 9"),
-        "coag10": "F10" if as_symbols else ("Coagulation Factor 10 (F10)" if as_symbols is None else "Coagulation Factor 10"),
-        "68161at40674": "POLH" if as_symbols else ("DNA polymerase eta (POLH)" if as_symbols is None else "DNA polymerase eta"),
-        "71251at40674": "SELE" if as_symbols else ("Selectin E (SELE)" if as_symbols is None else "Selectin E"),
-        "147514at40674": "ALKBH4" if as_symbols else ("alkB homolog 4, lysine demethylase (ALKBH4)" if as_symbols is None else "alkB homolog 4, lysine demethylase"),
-        "70809at40674": "MARCHF10" if as_symbols else ("Testis secretory sperm-binding protein Li 228n (MARCHF10)" if as_symbols is None else "Testis secretory sperm-binding protein Li 228n")
-    }  # FIXME: Update the master file to include these builtins
-    with open(filename, 'r') as f:
+# def read_gene_info_as_l2n(filename: str, as_symbols: bool = False) -> Dict[str, str]:
+#     """
+#     Reads a gene info list file to make a label -> name dict.
+#     :param filename: The file.
+#     :param as_symbols: Whether to return symbols or full names. If none, both are combined
+#     :return: The l2n dict.
+#     """
+#     l2n = {
+#         "209332at40674": "APOA1" if as_symbols else ("Apolipoprotein A-I (APOA1)" if as_symbols is None else "Apolipoprotein A-I"),
+#         "91651at40674": "CETP" if as_symbols else ("Cholesteryl ester transfer protein (CETP)" if as_symbols is None else "Cholesteryl ester transfer protein"),
+#         "209652at40674": "APOC1" if as_symbols else ("Apolipoprotein C-I (APOC1)" if as_symbols is None else "Apolipoprotein C-I"),
+#         "158878at40674": "VEGFA" if as_symbols else ("Vascular endothelial growth factor A (VEGFA)" if as_symbols is None else "Vascular endothelial growth factor A"),
+#         "coag9": "F9" if as_symbols else ("Coagulation Factor 9 (F9)" if as_symbols is None else "Coagulation Factor 9"),
+#         "coag10": "F10" if as_symbols else ("Coagulation Factor 10 (F10)" if as_symbols is None else "Coagulation Factor 10"),
+#         "68161at40674": "POLH" if as_symbols else ("DNA polymerase eta (POLH)" if as_symbols is None else "DNA polymerase eta"),
+#         "71251at40674": "SELE" if as_symbols else ("Selectin E (SELE)" if as_symbols is None else "Selectin E"),
+#         "147514at40674": "ALKBH4" if as_symbols else ("alkB homolog 4, lysine demethylase (ALKBH4)" if as_symbols is None else "alkB homolog 4, lysine demethylase"),
+#         "70809at40674": "MARCHF10" if as_symbols else ("Testis secretory sperm-binding protein Li 228n (MARCHF10)" if as_symbols is None else "Testis secretory sperm-binding protein Li 228n")
+#     }  # FIXME: Update the master file to include these builtins
+#     with open(filename, 'r') as f:
+#         first = True
+#         for l in f:
+#             if first:
+#                 first = False
+#                 continue
+#             row = l.strip().split("\t")
+#             if len(row) == 0:
+#                 continue
+#             offset = 1 if as_symbols else 0
+#             odb = row[0]
+#
+#             if odb in l2n:
+#                 continue
+#
+#             human = row[3 + offset]
+#             mouse = row[5 + offset]
+#             chimp = row[7 + offset]
+#             bonobo = row[9 + offset]
+#             generic = row[11]
+#             entrez = row[12]
+#             uniprot = row[14]
+#
+#             name = 'NOT FOUND'
+#
+#             if human == 'NOT FOUND':
+#                 if mouse == 'NOT FOUND':
+#                     if chimp == 'NOT FOUND':
+#                         if bonobo == 'NOT FOUND':
+#                             if entrez == 'NOT FOUND' or not as_symbols:
+#                                 if uniprot == 'NOT FOUND' or as_symbols:
+#                                     name = odb if as_symbols else generic
+#                                 else:
+#                                     name = uniprot
+#                             else:
+#                                 name = entrez
+#                         else:
+#                             name = bonobo
+#                     else:
+#                         name = chimp
+#                 else:
+#                     name = mouse
+#             else:
+#                 name = human
+#
+#             l2n[odb] = name
+#
+#             if as_symbols is None:
+#                 symbol = "NOT FOUND"
+#                 if row[4] == 'NOT FOUND':
+#                     if row[6] == 'NOT FOUND':
+#                         if row[8] == 'NOT FOUND':
+#                             symbol = row[10]
+#                         else:
+#                             symbol = row[8]
+#                     else:
+#                         symbol = row[6]
+#                 else:
+#                     symbol = row[4]
+#                 l2n[odb] = f"{l2n[odb]} ({symbol})"
+#
+#     return l2n
+#
+#
+# def make_l2n(as_symbols = None) -> Dict[str, str]:
+#     annotations = osp.join(_self_path(), "data", "full_gene_info.tsv") # Latest matrix
+#     return read_gene_info_as_l2n(annotations, as_symbols)
+
+
+def make_l2n(as_symbols: bool = None) -> Dict[str, str]:
+    if as_symbols is None:
+        file = "id2name.tsv"
+    elif as_symbols:
+        file = "id2symbol.tsv"
+    else:
+        file = "id2longname.tsv"
+
+    id2name_dict = dict()
+    with open(osp.join(_self_path(), "data", file), 'r') as f:
         first = True
         for l in f:
             if first:
                 first = False
                 continue
-            row = l.strip().split("\t")
-            if len(row) == 0:
+            split = l.strip().split("\t")
+            split = [s.strip().strip('"').strip("'") for s in split]
+            if len(split) < 2:
                 continue
-            offset = 1 if as_symbols else 0
-            odb = row[0]
+            id2name_dict[split[0].strip()] = split[1].strip()
 
-            if odb in l2n:
-                continue
-
-            human = row[3 + offset]
-            mouse = row[5 + offset]
-            chimp = row[7 + offset]
-            bonobo = row[9 + offset]
-            generic = row[11]
-            entrez = row[12]
-            uniprot = row[14]
-
-            name = 'NOT FOUND'
-
-            if human == 'NOT FOUND':
-                if mouse == 'NOT FOUND':
-                    if chimp == 'NOT FOUND':
-                        if bonobo == 'NOT FOUND':
-                            if entrez == 'NOT FOUND' or not as_symbols:
-                                if uniprot == 'NOT FOUND' or as_symbols:
-                                    name = odb if as_symbols else generic
-                                else:
-                                    name = uniprot
-                            else:
-                                name = entrez
-                        else:
-                            name = bonobo
-                    else:
-                        name = chimp
-                else:
-                    name = mouse
-            else:
-                name = human
-
-            l2n[odb] = name
-
-            if as_symbols is None:
-                symbol = "NOT FOUND"
-                if row[4] == 'NOT FOUND':
-                    if row[6] == 'NOT FOUND':
-                        if row[8] == 'NOT FOUND':
-                            symbol = row[10]
-                        else:
-                            symbol = row[8]
-                    else:
-                        symbol = row[6]
-                else:
-                    symbol = row[4]
-                l2n[odb] = f"{l2n[odb]} ({symbol})"
-
-    return l2n
-
-
-def make_l2n(as_symbols = None) -> Dict[str, str]:
-    annotations = osp.join(_self_path(), "data", "full_gene_info.tsv") # Latest matrix
-    return read_gene_info_as_l2n(annotations, as_symbols)
+    return id2name_dict
 
 
 async def get_rates(timetree: Union[str, PhyloTree], prune: bool = True, taxa: List[str] = None, *trees: Union[str, PhyloTree]) -> Tuple[List[str], List[List[float]]]:
@@ -978,6 +1002,14 @@ async def generate_erc(topology: str, alignment1: str, alignment2: str, internal
     return ErcResult(alignment1, alignment2, rho, p, raw)
 
 
+def register_previous_run(pipeline_dir: str):
+    """
+    Register a previous ERC-Pipeline run as a datasource.
+    :param pipeline_dir: The directory.
+    """
+    register_erc_datasource(osp.join(pipeline_dir, "tree/"), osp.join(pipeline_dir, "ercs.csv"))
+
+
 def register_erc_datasource(treedir: str, datafile: str, sep: str = ',', is_oneway_to: str = None):
     """
     Registers a data source for pre-genned ercs and trees.
@@ -1033,7 +1065,7 @@ def read_datasource(datasource: ErcDataSource) -> List[ErcDataSourceEntry]:
     return entries
 
 
-async def generate_network() -> nx.Graph:
+def generate_network() -> nx.Graph:
     """
     Builds a network from currently registered data sources.
     :return: The erc network.

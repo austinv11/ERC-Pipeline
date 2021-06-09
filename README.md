@@ -119,9 +119,9 @@ Definitions of the additional optional arguments;
 
 Include previously run ERCs (assuming you ran the pipeline in directory: `old/erc_dir`):
 ```python
-from pipeline import register_erc_datasource
+from pipeline import register_previous_run
 
-register_erc_datasource("old/erc_dir/tree/", "old/erc_dir/ercs.csv")
+register_previous_run("old/erc_dir/")
 ```
 
 Add sequences to the workspace:

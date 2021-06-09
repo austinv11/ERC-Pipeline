@@ -47,6 +47,15 @@ def wait(coro):  # Wait on coroutines more simply
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
+# noinspection PyPep8Naming
+def translate(G: nx.Graph, l2n: Dict[str, str]) -> nx.Graph:
+    G_c = nx.Graph() if not G.is_directed() else nx.DiGraph()
+
+    for u, v in G.edges:
+        G_c.add_edge(l2n.get(u, u), l2n.get(v, v), **G.get_edge_data(u, v), default=dict())
+    return G_c
+
+
 def override_sys_out(tag: str = None):
     import sys
     from datetime import datetime as dt
