@@ -234,5 +234,5 @@ def graphviz_network_plot(net: nx.Graph, output: str, highlight: Dict[str, str] 
         n2.attr["fillcolor"] = color_from_custom_map(connectivity / max_connectivity, cmap) if highlight_by_font or (not highlight_by_font and n not in highlight) else highlight[n]
         if highlight_by_font and n in highlight:
             n2.attr['fontcolor'] = highlight[n]
-    A.draw(output, args='-Gsize=10,10 -Gdpi=1080')
+    A.draw(output, args='-Gsize=10,10 -Gdpi=300')
     A.draw(output.replace(".png", ".svg"), format='svg')
