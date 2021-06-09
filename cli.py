@@ -95,7 +95,7 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
 
     workspace = ErcWorkspace(wd, timetree, **arg_mods)
 
-    if not align_pair:
+    if not align_pair or (align_pair and sequences != "."):
         for f in os.listdir(sequences):
             if osp.isdir(f):
                 continue

@@ -43,6 +43,10 @@ def safe_mkdir(dir: str):
         except: pass
 
 
+def wait(coro):  # Wait on coroutines more simply
+    return asyncio.get_event_loop().run_until_complete(coro)
+
+
 def override_sys_out(tag: str = None):
     import sys
     from datetime import datetime as dt
