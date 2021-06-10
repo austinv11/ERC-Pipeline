@@ -1206,16 +1206,16 @@ def enrich_network(net: List[str], background_net: List[str], id2Name: Dict[str,
     jensen_tissues_enr.results.to_csv(basefile + '.jensen_tissues.csv')
     shutil.rmtree(osp.join(basefile))
 
-    covid19_enr = gp.enrichr(gene_list,
-                              'COVID-19_Related_Gene_Sets',
-                              'human',
-                              'wiki_output',
-                              osp.join(basefile, 'covid19_output'),
-                              background,
-                              no_plot=True)
-
-    covid19_enr.results.to_csv(basefile + '.covid19.csv')
-    shutil.rmtree(osp.join(basefile))
+    # covid19_enr = gp.enrichr(gene_list,
+    #                           'COVID-19_Related_Gene_Sets',
+    #                           'human',
+    #                           'wiki_output',
+    #                           osp.join(basefile, 'covid19_output'),
+    #                           background,
+    #                           no_plot=True)
+    #
+    # covid19_enr.results.to_csv(basefile + '.covid19.csv')
+    # shutil.rmtree(osp.join(basefile))
 
 
 class ErcWorkspace:
