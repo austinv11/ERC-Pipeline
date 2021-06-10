@@ -1351,15 +1351,15 @@ class ErcWorkspace:
             if z > 3:  # Z-scores above 3 are generally considered outliers if this is a normal distribution
                 outliers.append(taxon)
 
-        outliers_present = (len(outliers) == 0)  # Return True if there are no outliers, return False if there are outliers
+        outliers_not_present = (len(outliers) == 0)  # Return True if there are no outliers, return False if there are outliers
 
-        if outliers_present:
+        if not outliers_not_present:
             with open(osp.join(self.directory, 'failed_qc', osp.basename(alignment_file).split(".")[0]) + ".csv", 'w') as f:
                 f.write("taxon,branch_length,time,rate,is_outlier\n")
                 for (taxon, info) in taxon2rate.items():
                     f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{taxon in outliers}\n")
 
-        return outliers_present
+        return outliers_not_present
 
     async def run(self):
         align_names = [osp.basename(f) for f in self.aligns]
