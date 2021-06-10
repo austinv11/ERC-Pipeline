@@ -41,7 +41,7 @@ def main():
 
     for n in net.nodes:
         name = id2name.get(n, n)
-        with open(f"{name}_corrected_list.csv", 'w') as f:
+        with open(osp.join(args[1], f"{name}_corrected_list.csv"), 'w') as f:
             f.write(f"ODB,Protein,Rank in {name}'s list,{name}'s rank in partner's list,rho,raw p,FDR p\n")
             fdr_corrected = multipletests([net[n][n2]['p'] for n2 in node2sorted[n]], method="fdr_bh")[1]
             for index1, n2 in enumerate(node2sorted[n]):
