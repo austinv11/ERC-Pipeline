@@ -10,6 +10,7 @@ import os.path as osp
 from glob import glob
 from typing import Union, List, Optional, Tuple, Dict, Iterable
 
+import scipy.stats
 from amas import AMAS
 from ete3 import PhyloTree
 import networkx as nx
@@ -1342,13 +1343,25 @@ class ErcWorkspace:
         # QC Tests go here:
         mean_rate = np.mean([r[2] for r in taxon2rate.values()])  # Calculating mean and SD for rates
         sd_rate = np.std([r[2] for r in taxon2rate.values()])
+
+        mad = scipy.stats.median_absolute_deviation([r[2] for r in taxon2rate.values()])
+        median_rate = np.median([r[2] for r in taxon2rate.values()])
+
         outliers = []
         for (taxon, info) in taxon2rate.items():
             rate = info[2]
-            # Currently we are going to use a z-score to detect outliers
-            z = (rate - mean_rate) / sd_rate
+            # Z-Score test below, but Z-scores expend a normal distrbution
+            # Let's try calculating a z-score we are going to use a z-score to detect outliers
+            # z = (rate - mean_rate) / sd_rate
 
-            if z > 3:  # Z-scores above 3 are generally considered outliers if this is a normal distribution
+            # if z > 3:  # Z-scores above 3 are generally considered outliers if this is a normal distribution
+            #     outliers.append(taxon)
+
+            # MAD (Median absolute deviation) https://en.wikipedia.org/wiki/Median_absolute_deviation
+            # Is a standard deviation metric that is more robust than standard deviation
+            mad_outlier_score = np.abs(rate - median_rate) / mad  # https://stats.stackexchange.com/a/121075/306923
+
+            if mad_outlier_score > 3:
                 outliers.append(taxon)
 
         outliers_not_present = (len(outliers) == 0)  # Return True if there are no outliers, return False if there are outliers
@@ -1505,7 +1518,7 @@ class ErcWorkspace:
 
         if self.prepare:
             print("The prepare flag was passed, all intermediate data has been generated. Skipping ERC calculations...")
-            return
+            exit()
 
         completed = list()
         if not osp.exists(osp.join(self.directory, 'ercs_raw.csv')):
