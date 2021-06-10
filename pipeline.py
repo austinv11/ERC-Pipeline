@@ -1343,7 +1343,8 @@ class ErcWorkspace:
         mean_rate = np.mean([r[2] for r in taxon2rate.values()])  # Calculating mean and SD for rates
         sd_rate = np.std([r[2] for r in taxon2rate.values()])
         outliers = []
-        for (taxon, rate) in taxon2rate.items():
+        for (taxon, info) in taxon2rate.items():
+            rate = info[2]
             # Currently we are going to use a z-score to detect outliers
             z = (rate - mean_rate) / sd_rate
 
