@@ -1224,7 +1224,7 @@ class ErcWorkspace:
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
                  sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
                  taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict(),
-                 cores: int = 4, archive: bool = False, prepare: bool = False):
+                 cores: int = 4, archive: bool = False, prepare: bool = False, skip_qc: bool = False):
         self.timetree = timetree
         self.aligns = []
         self.paired_aligns = []
@@ -1243,6 +1243,7 @@ class ErcWorkspace:
         self.cores = cores
         self.archive = archive
         self.prepare = prepare
+        self.skip_qc = skip_qc
         # Currently hard coded to do a max of 4 jobs at a time
         self.jobs = min(self.cores, 4)
         self.cores_per_job = max(self.cores // self.jobs, 1)
@@ -1254,6 +1255,8 @@ class ErcWorkspace:
         safe_mkdir(osp.join(directory, 'pruned'))
         safe_mkdir(osp.join(directory, 'tree'))
         safe_mkdir(osp.join(directory, 'concat'))
+        if not self.skip_qc:
+            safe_mkdir(osp.join(directory, 'failed_qc'))
         if segmented:
             safe_mkdir(osp.join(directory, 'segments'))
 
@@ -1316,6 +1319,46 @@ class ErcWorkspace:
                 continue
             write_records(output_prefix + f'.chunk_{start_index}_{min(self.segment_size, segment_len) + start_index}',
                           chunk_records)
+
+    async def quality_control(self, alignment_file: str, tree_file: str) -> bool:
+        sequences = read_records(alignment_file)  # List of Record objects, each being a FASTA entry
+        tree = safe_phylo_read(tree_file)  # An ETE3 Tree object, representing the protein tree
+        if self.taxon_set and len(self.taxon_set) > 0:
+            tree = prune_tree(tree, self.taxon_set)
+        timetree = prune_tree(self.timetree, list(tree.iter_leaf_names()))
+        taxon2rate = dict()  # A dictionary that maps taxon names -> rates
+
+        # Calculate the rates
+        for prot_branch in tree.iter_leaves():
+            name = prot_branch.name
+            length = prot_branch.get_distance(prot_branch.up)
+            results = timetree.get_leaves_by_name(prot_branch.name)[0]
+            time = results.get_distance(results.up)
+            if time == 0.:
+                continue
+            rate = length / time
+            taxon2rate[name] = (length, time, rate)
+
+        # QC Tests go here:
+        mean_rate = np.mean([r[2] for r in taxon2rate.values()])  # Calculating mean and SD for rates
+        sd_rate = np.std([r[2] for r in taxon2rate.values()])
+        outliers = []
+        for (taxon, rate) in taxon2rate.items():
+            # Currently we are going to use a z-score to detect outliers
+            z = (rate - mean_rate) / sd_rate
+
+            if z > 3:  # Z-scores above 3 are generally considered outliers if this is a normal distribution
+                outliers.append(taxon)
+
+        outliers_present = (len(outliers) == 0)  # Return True if there are no outliers, return False if there are outliers
+
+        if outliers_present:
+            with open(osp.join(self.directory, 'failed_qc', osp.basename(alignment_file).split(".")[0]) + ".csv", 'w') as f:
+                f.write("taxon,branch_length,time,rate,is_outlier\n")
+                for (taxon, info) in taxon2rate.items():
+                    f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{taxon in outliers}\n")
+
+        return outliers_present
 
     async def run(self):
         align_names = [osp.basename(f) for f in self.aligns]
@@ -1427,6 +1470,18 @@ class ErcWorkspace:
                                                     osp.join(self.directory, 'tree', f + '.pred'),
                                                     self.concatenated[f][1],
                                                     cores=self.cores_per_job) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
+
+            if not self.skip_qc:
+                print("Running QC...")
+                with open("failed_qc_checks.txt", 'w') as f:
+                    for align in set(align_names):
+                        align_file = osp.join(self.directory, 'trim', align)
+                        tree_file = osp.join(self.directory, 'tree', align + ".pred")
+
+                        if not (await self.quality_control(align_file, tree_file)):
+                            print(f"QC WARNING: {align_file} FAILED QC! Consider checking the trimmed alignment in {align_file} or the tree in {tree_file}.")
+                            f.write(align)
+                            f.write("\n")
 
         if self.archive:
             await archive_directory(osp.join(self.directory, 'trim'), 'trim.tar.bz2')
