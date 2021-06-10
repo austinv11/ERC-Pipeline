@@ -1224,7 +1224,7 @@ class ErcWorkspace:
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
                  sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
                  taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict(),
-                 cores: int = 4, archive: bool = False):
+                 cores: int = 4, archive: bool = False, prepare: bool = False):
         self.timetree = timetree
         self.aligns = []
         self.paired_aligns = []
@@ -1242,6 +1242,7 @@ class ErcWorkspace:
         self.id2name = id2name
         self.cores = cores
         self.archive = archive
+        self.prepare = prepare
         # Currently hard coded to do a max of 4 jobs at a time
         self.jobs = min(self.cores, 4)
         self.cores_per_job = max(self.cores // self.jobs, 1)
@@ -1445,6 +1446,10 @@ class ErcWorkspace:
 
         past_trees = {osp.basename(f) for f in past_trees}
         all_trees = {osp.basename(f) + ".pred" for f in self.aligns} | past_trees
+
+        if self.prepare:
+            print("The prepare flag was passed, all intermediate data has been generated. Skipping ERC calculations...")
+            return
 
         completed = list()
         if not osp.exists(osp.join(self.directory, 'ercs_raw.csv')):

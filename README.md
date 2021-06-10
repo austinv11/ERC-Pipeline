@@ -84,6 +84,8 @@ Assuming the sequences are in a directory called `SEQUENCE_DIRECTORY` and the ti
 * If you want to run ERCs along pieces of the alignments, add the `--segment` argument. This can be modified using the 
   `--slide` argument, which rather than splitting the alignment into kmers, will normalize the data using a sliding 
   window based on kmers. You can also use `--kmer K` to change the size of the kmers (replace "K" with the number). 
+  
+* If you want to just prepare all your data and not calculate ERCs, you can pass the `--prepare` flag.
 
 
 ## Calculating ERCs in Python
@@ -116,6 +118,7 @@ Definitions of the additional optional arguments;
 * time_corrected: If True, instead of standard Spearman's test, run Spearman's partial correlations controlling for time.
 * id2name: A dictionary that if passed, will be used to convert protein ids to readable names in outputs.
 * cores: Number of cores to use for calculations.
+* prepare: If True, calculate intermediate files and then stop.
 
 Include previously run ERCs (assuming you ran the pipeline in directory: `old/erc_dir`):
 ```python
