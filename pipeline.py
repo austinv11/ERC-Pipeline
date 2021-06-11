@@ -375,7 +375,47 @@ def make_l2n(as_symbols: bool = None) -> Dict[str, str]:
     return id2name_dict
 
 
-async def get_rates(timetree: Union[str, PhyloTree], prune: bool = True, taxa: List[str] = None, *trees: Union[str, PhyloTree]) -> Tuple[List[str], List[List[float]]]:
+def find_tree(odb: str, return_as_tree: bool = True) -> Union[str, PhyloTree]:
+    for datasource in datasources:
+        tree_dir = datasource.tree_dir
+        if osp.exists(osp.join(tree_dir, odb + '.fa.pred')):
+            path = osp.join(tree_dir, odb + '.fa.pred')
+            if return_as_tree:
+                return safe_phylo_read(path)
+            else:
+                return path
+    raise AssertionError(f"Cant't find {odb}!")
+
+
+def find_trim_seq(odb: str) -> str:
+    for datasource in datasources:
+        tree_dir = datasource.tree_dir
+        if osp.exists(osp.join(tree_dir, odb + '.fa.pred')):
+            if tree_dir.endswith("/"):
+                tree_dir = tree_dir[0:len(tree_dir)-1]
+            path = tree_dir.split("/")
+            path = "/".join(path[0:len(path)-1])
+
+            if osp.exists(osp.join(path, "trimmed")):
+                path = osp.join(path, "trimmed", odb + '.fa')
+            elif not osp.exists(osp.join(path, "trimmed")) and osp.exists(osp.join(path, "trimmed.tar.bz2")):
+                call('tar -xvf ' + osp.join(path, "trimmed.tar.bz2"), cwd=path)
+                path = osp.join(path, "trimmed", odb + '.fa')
+            else:
+                if osp.exists("/".join([path, path[1:], 'trim'])):
+                    path = "/".join([path, path[1:], 'trim', odb + '.fa'])
+                else:
+                    call('tar -xvf ' + osp.join(path, "trim.tar.bz2"), cwd=path)
+                    path = "/".join([path, path[1:], 'trim', odb + '.fa'])
+            if not osp.exists(path):
+                continue
+            else:
+                return path
+
+    raise AssertionError(f"Cant't find {odb}!")
+
+
+def get_rates(timetree: Union[str, PhyloTree], prune: bool = True, taxa: List[str] = None, *trees: Union[str, PhyloTree]) -> Tuple[List[str], List[List[float]]]:
     """
     Get rates from time + trees.
     :param timetree: The time tree.

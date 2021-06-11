@@ -201,7 +201,7 @@ from pipeline import get_rates
 # Second arg determines whether to prune the tree topologies so all trees have the same topologies
 # Third arg is a list of taxa to limit calculations to
 # The remaining args are the trees for proteins of interest
-taxa, rates = await get_rates(tree_topology_object, True, None, tree1, tree2)
+taxa, rates = get_rates(tree_topology_object, True, None, tree1, tree2)
 # Taxa is a list of taxa names
 # Rates is a list of lists. The first list are all the time units, the following lists are the rates. 
 # With the indices of each element corresponding to the taxon in the matching index of the taxa list.
@@ -211,7 +211,7 @@ Convert rate data to correlations:
 ```python
 from pipeline import get_rates, rates_to_correlation
 
-rate_info = await get_rates(tree_topology_object, True, None, tree1, tree2)
+rate_info = get_rates(tree_topology_object, True, None, tree1, tree2)
 rho, p = rates_to_correlation(rate_info)
 ```
 
