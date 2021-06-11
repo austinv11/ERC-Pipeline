@@ -4,7 +4,7 @@ import sys
 from statsmodels.stats.multitest import multipletests
 
 from pipeline import register_previous_run, generate_network, _30mya_cutoff, _20mya_cutoff, find_tree, get_rates
-from utilities import safe_mkdir, rho_sorted_neighbors, safe_phylo_read
+from utilities import safe_mkdir, rho_sorted_neighbors, safe_phylo_read, mammal_taxa_info
 
 
 def main():
@@ -41,20 +41,24 @@ def main():
     if protein2:
         protein2 = find_tree(protein2)
 
+    name2taxa = mammal_taxa_info(name_as_key=True)
+
     if protein2:
         print(f"Getting rate data for {protein} with {protein2}...")
         taxa, rates = get_rates(tree, True, taxa_list, protein, protein2)
         with open(output, 'w') as f:
-            f.write("protein1,protein2,taxon,rate1,rate2,time\n")
+            f.write("protein1,protein2,taxon,taxon order,rate1,rate2,time\n")
             for (taxon, rate1, rate2, time) in zip(taxa, rates[1], rates[2], rates[0]):
-                f.write(f"{protein},{protein2},{taxon},{rate1},{rate2},{time}\n")
+                order = name2taxa[taxon.strip()].order
+                f.write(f"{protein},{protein2},{taxon},{order},{rate1},{rate2},{time}\n")
     else:
         print(f"Getting rate data for {protein}...")
         taxa, rates = get_rates(tree, True, taxa_list, protein)
         with open(output, 'w') as f:
-            f.write("protein,taxon,time,rate\n")
+            f.write("protein,taxon,taxon order,time,rate\n")
             for (taxon, rate1, time) in zip(taxa, rates[1], rates[0]):
-                f.write(f"{protein},{taxon},{time},{rate1}\n")
+                order = name2taxa[taxon.strip()].order
+                f.write(f"{protein},{taxon},{order},{time},{rate1}\n")
 
 
 if __name__ == "__main__":

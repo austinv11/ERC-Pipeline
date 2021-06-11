@@ -1,4 +1,6 @@
 import asyncio
+from collections import namedtuple
+
 import aiohttp
 import itertools
 import math
@@ -12,6 +14,9 @@ import xlsxwriter
 from ete3 import PhyloTree
 from ete3.parser.newick import NewickError
 import networkx as nx
+
+
+TaxaInfo = namedtuple('TaxaInfo', ['txid', 'name', 'species', 'genus', 'family', 'order'])
 
 
 def safe_phylo_read(filename) -> PhyloTree:
@@ -31,6 +36,19 @@ def safe_phylo_read(filename) -> PhyloTree:
                 except NewickError as e:
                     print(f"Are you sure tree {filename} exists?", file=sys.stderr, flush=True)
                     raise e
+
+
+def mammal_taxa_info(name_as_key: bool = False) -> Dict[str, TaxaInfo]:
+    info = dict()
+    with open(osp.join(_self_path(), 'data', 'txid2name.tsv'), 'r') as f:
+        first = True
+        for line in f:
+            if first:
+                first = False
+                continue
+            split = line.strip().split("\t")
+            info[split[1] if name_as_key else split[0]] = TaxaInfo(*split)
+    return info
 
 
 def safe_delete(path: str):
