@@ -1482,6 +1482,7 @@ class ErcWorkspace:
                 print("Running QC...")
                 any_failed = False
                 tree = safe_phylo_read(self.timetree)
+                tree.set_outgroup("ORNITHORHYNCHUS_ANATINUS")
                 with open("failed_qc_checks.csv", 'w') as f:
                     f.write("file,name\n")
                     for align in set(align_names):
