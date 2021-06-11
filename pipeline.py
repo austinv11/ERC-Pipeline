@@ -1321,7 +1321,7 @@ class ErcWorkspace:
             write_records(output_prefix + f'.chunk_{start_index}_{min(self.segment_size, segment_len) + start_index}',
                           chunk_records)
 
-    async def quality_control(self, alignment_file: str, tree_file: str) -> bool:
+    async def quality_control(self, alignment_file: str, tree_file: str, qc_directory: str) -> bool:
         sequences = read_records(alignment_file)  # List of Record objects, each being a FASTA entry
         tree = safe_phylo_read(tree_file)  # An ETE3 Tree object, representing the protein tree
         if self.taxon_set and len(self.taxon_set) > 0:
@@ -1341,36 +1341,29 @@ class ErcWorkspace:
             taxon2rate[name] = (length, time, rate)
 
         # QC Tests go here:
-        mean_rate = np.mean([r[2] for r in taxon2rate.values()])  # Calculating mean and SD for rates
+        mean_rate = np.mean([r[2] for r in taxon2rate.values()])  # Calculating mean for rates
         sd_rate = np.std([r[2] for r in taxon2rate.values()])
-
-        mad = scipy.stats.median_absolute_deviation([r[2] for r in taxon2rate.values()])
-        median_rate = np.median([r[2] for r in taxon2rate.values()])
 
         outliers = []
         for (taxon, info) in taxon2rate.items():
             rate = info[2]
-            # Z-Score test below, but Z-scores expend a normal distrbution
-            # Let's try calculating a z-score we are going to use a z-score to detect outliers
-            # z = (rate - mean_rate) / sd_rate
 
-            # if z > 3:  # Z-scores above 3 are generally considered outliers if this is a normal distribution
-            #     outliers.append(taxon)
+            # The ratio of a taxon's rate to the mean rate
+            rate_ratio = rate / mean_rate
 
-            # MAD (Median absolute deviation) https://en.wikipedia.org/wiki/Median_absolute_deviation
-            # Is a standard deviation metric that is more robust than standard deviation
-            mad_outlier_score = np.abs(rate - median_rate) / mad  # https://stats.stackexchange.com/a/121075/306923
-
-            if mad_outlier_score > 3:
+            if rate_ratio >= 10:  # ARBITRARY CUTOFF
                 outliers.append(taxon)
 
         outliers_not_present = (len(outliers) == 0)  # Return True if there are no outliers, return False if there are outliers
 
         if not outliers_not_present:
-            with open(osp.join(self.directory, 'failed_qc', osp.basename(alignment_file).split(".")[0]) + ".csv", 'w') as f:
-                f.write("taxon,branch_length,time,rate,is_outlier\n")
+            safe_mkdir(qc_directory)
+            name = osp.basename(alignment_file).split(".")[0]
+            name = self.id2name.get(name, name)
+            with open(osp.join(qc_directory, name + ".csv", 'w')) as f:
+                f.write("taxon,branch_length,time,rate,rate to mean rate ratio,is_outlier\n")
                 for (taxon, info) in taxon2rate.items():
-                    f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{taxon in outliers}\n")
+                    f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{info[2] / mean_rate},{taxon in outliers}\n")
 
         return outliers_not_present
 
@@ -1487,15 +1480,37 @@ class ErcWorkspace:
 
             if not self.skip_qc:
                 print("Running QC...")
-                with open("failed_qc_checks.txt", 'w') as f:
+                any_failed = False
+                with open("failed_qc_checks.csv", 'w') as f:
+                    f.write("file,name\n")
                     for align in set(align_names):
-                        align_file = osp.join(self.directory, 'trim', align)
+                        align_file = osp.join(self.directory, 'aligns', align)
+                        trim_file = osp.join(self.directory, 'trim', align)
                         tree_file = osp.join(self.directory, 'tree', align + ".pred")
+                        prot_id = align.split(".")[0]
+                        qc_dir = osp.join(self.directory, 'failed_qc', prot_id)
 
-                        if not (await self.quality_control(align_file, tree_file)):
-                            print(f"QC WARNING: {align_file} FAILED QC! Consider checking the trimmed alignment in {align_file} or the tree in {tree_file}.")
+                        if not (await self.quality_control(trim_file, tree_file, qc_dir)):
+                            any_failed = True
+                            name = self.id2name.get(prot_id, prot_id)
+
+                            print(f"QC WARNING: {trim_file} FAILED QC! Consider checking the trimmed alignment in {trim_file} or the tree in {tree_file}.")
                             f.write(align)
+                            f.write(",")
+                            f.write(name)
                             f.write("\n")
+
+                            # Copy files
+                            # raw align might be compressed
+                            if osp.exists(align_file):
+                                shutil.copy(align_file, osp.join(qc_dir, osp.basename(align_file)))
+                            shutil.copy(trim_file, osp.join(qc_dir, osp.basename(trim_file)))
+                            shutil.copy(tree_file, osp.join(qc_dir, osp.basename(tree_file)))
+
+                if any_failed:
+                    print("At least one protein failed QC! Run with --skip-qc to ignore QC flagging.")
+                    print("Exiting early...")
+                    exit()
 
         if self.archive:
             await archive_directory(osp.join(self.directory, 'trim'), 'trim.tar.bz2')
