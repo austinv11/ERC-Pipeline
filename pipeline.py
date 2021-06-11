@@ -1504,7 +1504,7 @@ class ErcWorkspace:
                             # raw align might be compressed
                             if osp.exists(align_file):
                                 shutil.copy(align_file, osp.join(qc_dir, osp.basename(align_file)))
-                            shutil.copy(trim_file, osp.join(qc_dir, osp.basename(trim_file)))
+                            shutil.copy(trim_file, osp.join(qc_dir, osp.basename(trim_file).replace(".fa", ".trim.fa")))
                             shutil.copy(tree_file, osp.join(qc_dir, osp.basename(tree_file)))
 
                 if any_failed:
