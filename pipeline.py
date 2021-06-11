@@ -1360,7 +1360,7 @@ class ErcWorkspace:
             safe_mkdir(qc_directory)
             name = osp.basename(alignment_file).split(".")[0]
             name = self.id2name.get(name, name)
-            with open(osp.join(qc_directory, name + ".csv", 'w')) as f:
+            with open(osp.join(qc_directory, name + ".csv"), 'w') as f:
                 f.write("taxon,branch_length,time,rate,rate to mean rate ratio,is_outlier\n")
                 for (taxon, info) in taxon2rate.items():
                     f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{info[2] / mean_rate},{taxon in outliers}\n")
