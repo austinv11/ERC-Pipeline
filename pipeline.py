@@ -1508,7 +1508,7 @@ class ErcWorkspace:
                             shutil.copy(tree_file, osp.join(qc_dir, osp.basename(tree_file)))
 
                 if any_failed:
-                    print("At least one protein failed QC! Run with --skip-qc to ignore QC flagging.")
+                    print("At least one protein failed QC (is there low alignment quality?)! Run with --skip-qc to ignore QC flagging.")
                     print("Exiting early...")
                     exit()
 
