@@ -10,7 +10,7 @@ from utilities import safe_mkdir, rho_sorted_neighbors, safe_phylo_read, mammal_
 def main():
     args = sys.argv[1:]
 
-    assert len(args) >= 5, "Arguments: python3 get_rate_data.py full/20my/30my pipeline_directory output protein_id [protein_id 2]"
+    assert len(args) >= 4, "Arguments: python3 get_rate_data.py full/20my/30my pipeline_directory output protein_id [protein_id 2]"
 
     tree = safe_phylo_read(osp.join("data", "finished_mam_timetree.nwk"))
     taxon_set = args[0].lower()
@@ -32,7 +32,7 @@ def main():
 
     protein = args[3].split(".")[0].strip()
 
-    if len(args) > 5:
+    if len(args) > 4:
         protein2 = args[4].split(".")[0].strip()
     else:
         protein2 = None
@@ -44,7 +44,7 @@ def main():
     name2taxa = mammal_taxa_info(name_as_key=True)
 
     if protein2:
-        print(f"Getting rate data for {protein} with {protein2}...")
+        print(f"Getting rate data for {args[3]} with {args[4]}...")
         taxa, rates = get_rates(tree, True, taxa_list, protein, protein2)
         with open(output, 'w') as f:
             f.write("protein1,protein2,taxon,taxon order,rate1,rate2,time\n")
@@ -52,7 +52,7 @@ def main():
                 order = name2taxa[taxon.strip()].order
                 f.write(f"{args[3]},{args[4]},{taxon},{order},{rate1},{rate2},{time}\n")
     else:
-        print(f"Getting rate data for {protein}...")
+        print(f"Getting rate data for {args[3]}...")
         taxa, rates = get_rates(tree, True, taxa_list, protein)
         with open(output, 'w') as f:
             f.write("protein,taxon,taxon order,time,rate\n")
