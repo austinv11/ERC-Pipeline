@@ -95,6 +95,8 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
             run = osp.abspath(run)
             register_erc_datasource(osp.join(run, "tree/"), osp.join(run, "ercs.csv"))
 
+    sequences = osp.abspath(sequences)
+
     workspace = ErcWorkspace(wd, timetree, **arg_mods)
 
     if not align_pair or (align_pair and sequences != "."):
@@ -104,7 +106,7 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
             if f.split(".")[-1].lower() not in FASTA_ENDINGS:
                 print(f"WARNING: Skipping sequence file {f}! It does not have a fasta file ending!")
                 continue
-            workspace.add_alignment(osp.join(osp.abspath(sequences), f))
+            workspace.add_alignment(osp.join(sequences, f))
     else:
         for pair in align_pair:
             workspace.add_alignment(pair[0], pair[1])
