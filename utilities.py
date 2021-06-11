@@ -15,6 +15,8 @@ import networkx as nx
 
 
 def safe_phylo_read(filename) -> PhyloTree:
+    if isinstance(filename, PhyloTree):
+        return filename
     try:
         return PhyloTree(filename, format=3)
     except:

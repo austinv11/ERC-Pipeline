@@ -20,7 +20,7 @@ import gseapy as gp
 from scipy.stats import spearmanr
 import xlsxwriter
 
-from fasta import read_records, write_records, Record
+from fasta import read_records, write_records, Record, phylogenetic_sort
 from utilities import async_call, safe_phylo_read, safe_delete, _self_path, safe_mkdir, chunks, make_bold_formatting, \
     make_p_formatting, make_rho_formatting
 
@@ -1481,6 +1481,7 @@ class ErcWorkspace:
             if not self.skip_qc:
                 print("Running QC...")
                 any_failed = False
+                tree = safe_phylo_read(self.timetree)
                 with open("failed_qc_checks.csv", 'w') as f:
                     f.write("file,name\n")
                     for align in set(align_names):
@@ -1503,8 +1504,12 @@ class ErcWorkspace:
                             # Copy files
                             # raw align might be compressed
                             if osp.exists(align_file):
-                                shutil.copy(align_file, osp.join(qc_dir, osp.basename(align_file)))
-                            shutil.copy(trim_file, osp.join(qc_dir, osp.basename(trim_file).replace(".fa", ".trim.fa")))
+                                records = read_records(align_file)
+                                records = phylogenetic_sort(records, tree)
+                                write_records(osp.join(qc_dir, osp.basename(align_file)), records)
+                            records = read_records(trim_file)
+                            records = phylogenetic_sort(records, tree)
+                            write_records(osp.join(qc_dir, osp.basename(trim_file).replace(".fa", ".trim.fa")), records)
                             shutil.copy(tree_file, osp.join(qc_dir, osp.basename(tree_file)))
 
                 if any_failed:
