@@ -1521,10 +1521,10 @@ class ErcWorkspace:
             with open("failed_align_qc_checks.csv", 'w') as f, open("total_taxa_dist.csv", 'w') as f2:
                 f.write("file,name\n")
                 f2.write("Name,ODB,Taxon,Length,Percent Gaps,Is Flagged\n")
-                for align in set(align_names):
-                    align_file = osp.join(self.directory, 'aligns', align)
-                    trim_file = osp.join(self.directory, 'trim', align)
-                    prot_id = align.split(".")[0]
+                for align_name in set(align_names):
+                    align_file = osp.join(self.directory, 'aligns', align_name)
+                    trim_file = osp.join(self.directory, 'trim', align_name)
+                    prot_id = align_name.split(".")[0]
                     name = self.id2name.get(prot_id, prot_id)
                     qc_dir = osp.join(self.directory, 'failed_qc', 'align_tests', prot_id)
 
@@ -1536,7 +1536,7 @@ class ErcWorkspace:
                         any_failed = True
 
                         print(f"QC WARNING: {trim_file} FAILED QC! Consider checking the trimmed alignment in {trim_file}.")
-                        f.write(align)
+                        f.write(align_name)
                         f.write(",")
                         f.write(name)
                         f.write("\n")
