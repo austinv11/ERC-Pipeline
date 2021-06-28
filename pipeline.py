@@ -552,7 +552,7 @@ def concat(in_files: Iterable[str], partitions_file: str, out_file: str):
     alignment.write_partitions(partitions_file, 'raxml')
 
 
-async def align(fastafile: str, outputfile: str, threads: int = 5):
+async def align_fasta(fastafile: str, outputfile: str, threads: int = 5):
     """
     Aligns a file.
 
@@ -1477,9 +1477,9 @@ class ErcWorkspace:
                     aligns = [f for f in aligns if not osp.exists(osp.join(self.directory, 'aligns', f))]
                     if len(aligns) == 0:
                         continue
-                    await asyncio.gather(*[align(osp.join(self.directory, 'cleaned', f),
-                                                 osp.join(self.directory, 'aligns', f),
-                                                 self.cores_per_job) for f in aligns if f not in self.concatenated])
+                    await asyncio.gather(*[align_fasta(osp.join(self.directory, 'cleaned', f),
+                                                       osp.join(self.directory, 'aligns', f),
+                                                       self.cores_per_job) for f in aligns if f not in self.concatenated])
             shutil.rmtree(osp.join(self.directory, 'cleaned'))
 
         to_remove = set()  # Remove seqs only composed of gaps
