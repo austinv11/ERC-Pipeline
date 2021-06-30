@@ -1363,7 +1363,7 @@ class ErcWorkspace:
             write_records(output_prefix + f'.chunk_{start_index}_{min(self.segment_size, segment_len) + start_index}',
                           chunk_records)
 
-    async def tree_quality_control(self, alignment_file: str, tree_file: str, qc_directory: str) -> bool:
+    async def tree_quality_control(self, alignment_file: str, tree_file: str, qc_directory: str, protein_id: str) -> bool:
         sequences = read_records(alignment_file)  # List of Record objects, each being a FASTA entry
         tree = safe_phylo_read(tree_file)  # An ETE3 Tree object, representing the protein tree
         if self.taxon_set and len(self.taxon_set) > 0:
@@ -1402,14 +1402,14 @@ class ErcWorkspace:
             safe_mkdir(qc_directory)
             name = osp.basename(alignment_file).split(".")[0]
             name = self.id2name.get(name, name)
-            with open(osp.join(qc_directory, name + ".csv"), 'w') as f:
+            with open(osp.join(qc_directory, protein_id + ".csv"), 'w') as f:
                 f.write("taxon,branch_length,time,rate,rate to mean rate ratio,is_outlier\n")
                 for (taxon, info) in taxon2rate.items():
                     f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{info[2] / mean_rate},{taxon in outliers}\n")
 
         return outliers_not_present
 
-    async def align_quality_control(self, alignment_file: str, qc_directory: str) -> bool:
+    async def align_quality_control(self, alignment_file: str, qc_directory: str, protein_id: str) -> bool:
         sequences = read_records(alignment_file)  # List of Record objects, each being a FASTA entry
 
         # Filter out sequences not a part of the taxon set
@@ -1432,11 +1432,11 @@ class ErcWorkspace:
         # Check if any of the sequences has a greater than 50% gap character proportion
         outliers_not_present = len(outliers) == 0
 
-        if outliers_not_present:  # If this was flagged, write data to a file for this protein
+        if not outliers_not_present:  # If this was flagged, write data to a file for this protein
             safe_mkdir(qc_directory)
             name = osp.basename(alignment_file).split(".")[0]
             name = self.id2name.get(name, name)
-            with open(osp.join(qc_directory, name + ".csv"), 'w') as f:
+            with open(osp.join(qc_directory, protein_id + ".csv"), 'w') as f:
                 f.write("taxon,trimmed_length,gap_proportion,is_outlier\n")
                 for (taxon, data) in taxon2seq_data.items():
                     f.write(f"{taxon},{data[0]},{data[1]},{taxon in outliers}\n")
@@ -1526,9 +1526,10 @@ class ErcWorkspace:
                     trim_file = osp.join(self.directory, 'trim', align_name)
                     prot_id = align_name.split(".")[0]
                     name = self.id2name.get(prot_id, prot_id)
+                    name = name.replace(",", "/")
                     qc_dir = osp.join(self.directory, 'failed_qc', 'align_tests', prot_id)
 
-                    outliers_not_present, seq_data = await self.align_quality_control(trim_file, qc_dir)
+                    outliers_not_present, seq_data = await self.align_quality_control(trim_file, qc_dir, prot_id)
                     for taxon, data in seq_data.items():
                         f2.write(f"{name},{prot_id},{taxon},{data[0]},{data[1]},{not outliers_not_present}\n")
 
@@ -1613,7 +1614,7 @@ class ErcWorkspace:
                         prot_id = align.split(".")[0]
                         qc_dir = osp.join(self.directory, 'failed_qc', 'tree_tests', prot_id)
 
-                        if not (await self.tree_quality_control(trim_file, tree_file, qc_dir)):
+                        if not (await self.tree_quality_control(trim_file, tree_file, qc_dir,prot_id)):
                             any_failed = True
                             name = self.id2name.get(prot_id, prot_id)
 
