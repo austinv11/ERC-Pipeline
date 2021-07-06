@@ -87,9 +87,6 @@ Assuming the sequences are in a directory called `SEQUENCE_DIRECTORY` and the ti
   
 * If you want to just prepare all your data and not calculate ERCs, you can pass the `--prepare` flag.
 
-* If you want to skip QC checks, pass the `--skip-qc`. Note that QC checks are not complete. 
-
-
 ## Calculating ERCs in Python
 The pipeline is easily accessible in Python. For practical examples of usage, check out the source of `cli.py`.
 

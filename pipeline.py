@@ -1265,7 +1265,7 @@ class ErcWorkspace:
                  internal_requirement: float = -1, include_terminal: bool = False, recalculate: bool = False,
                  sliding_window: bool = False, skip_align: bool = False, skip_trim: bool = False,
                  taxon_set: List[str] = None, time_corrected: bool = False, id2name: Dict[str, str] = dict(),
-                 cores: int = 4, archive: bool = False, prepare: bool = False, skip_qc: bool = False):
+                 cores: int = 4, archive: bool = False, prepare: bool = False):
         self.timetree = timetree
         self.aligns = []
         self.paired_aligns = []
@@ -1284,7 +1284,6 @@ class ErcWorkspace:
         self.cores = cores
         self.archive = archive
         self.prepare = prepare
-        self.skip_qc = skip_qc
         # Currently hard coded to do a max of 4 jobs at a time
         self.jobs = min(self.cores, 4)
         self.cores_per_job = max(self.cores // self.jobs, 1)
@@ -1296,10 +1295,6 @@ class ErcWorkspace:
         safe_mkdir(osp.join(directory, 'pruned'))
         safe_mkdir(osp.join(directory, 'tree'))
         safe_mkdir(osp.join(directory, 'concat'))
-        if not self.skip_qc:
-            safe_mkdir(osp.join(directory, 'failed_qc'))
-            safe_mkdir(osp.join(directory, 'failed_qc', 'tree_tests'))
-            safe_mkdir(osp.join(directory, 'failed_qc', 'align_tests'))
         if segmented:
             safe_mkdir(osp.join(directory, 'segments'))
 
@@ -1362,86 +1357,6 @@ class ErcWorkspace:
                 continue
             write_records(output_prefix + f'.chunk_{start_index}_{min(self.segment_size, segment_len) + start_index}',
                           chunk_records)
-
-    async def tree_quality_control(self, alignment_file: str, tree_file: str, qc_directory: str) -> bool:
-        sequences = read_records(alignment_file)  # List of Record objects, each being a FASTA entry
-        tree = safe_phylo_read(tree_file)  # An ETE3 Tree object, representing the protein tree
-        if self.taxon_set and len(self.taxon_set) > 0:
-            tree = prune_tree(tree, self.taxon_set)
-        timetree = prune_tree(self.timetree, list(tree.iter_leaf_names()))
-        taxon2rate = dict()  # A dictionary that maps taxon names -> rates
-
-        # Calculate the rates
-        for prot_branch in tree.iter_leaves():
-            name = prot_branch.name
-            length = prot_branch.get_distance(prot_branch.up)
-            results = timetree.get_leaves_by_name(prot_branch.name)[0]
-            time = results.get_distance(results.up)
-            if time == 0.:
-                continue
-            rate = length / time
-            taxon2rate[name] = (length, time, rate)
-
-        # QC Tests go here:
-        mean_rate = np.mean([r[2] for r in taxon2rate.values()])  # Calculating mean for rates
-        sd_rate = np.std([r[2] for r in taxon2rate.values()])
-
-        outliers = []
-        for (taxon, info) in taxon2rate.items():
-            rate = info[2]
-
-            # The ratio of a taxon's rate to the mean rate
-            rate_ratio = rate / mean_rate
-
-            if rate_ratio >= 25:  # ARBITRARY CUTOFF
-                outliers.append(taxon)
-
-        outliers_not_present = (len(outliers) == 0)  # Return True if there are no outliers, return False if there are outliers
-
-        if not outliers_not_present:
-            safe_mkdir(qc_directory)
-            name = osp.basename(alignment_file).split(".")[0]
-            name = self.id2name.get(name, name)
-            with open(osp.join(qc_directory, name + ".csv"), 'w') as f:
-                f.write("taxon,branch_length,time,rate,rate to mean rate ratio,is_outlier\n")
-                for (taxon, info) in taxon2rate.items():
-                    f.write(f"{taxon},{info[0]},{info[1]},{info[2]},{info[2] / mean_rate},{taxon in outliers}\n")
-
-        return outliers_not_present
-
-    async def align_quality_control(self, alignment_file: str, qc_directory: str) -> bool:
-        sequences = read_records(alignment_file)  # List of Record objects, each being a FASTA entry
-
-        # Filter out sequences not a part of the taxon set
-        if self.taxon_set is not None and len(self.taxon_set) > 0:
-            sequences = [r for r in sequences if r.title.strip() in self.taxon_set]
-
-        # Collect ratios of gaps to length for each taxon
-        taxon2seq_data = dict()
-        outliers = set()
-        for r in sequences:
-            taxon = r.title.strip()
-            length = len(r.sequence)
-            gap_chars = r.sequence.count('-')
-            gap_proportion = gap_chars/length
-            taxon2seq_data[taxon] = (length, gap_proportion)
-
-            if gap_proportion > 0.5:  # Current cut off is 50% gaps or more
-                outliers.add(taxon)
-
-        # Check if any of the sequences has a greater than 50% gap character proportion
-        outliers_not_present = len(outliers) == 0
-
-        if outliers_not_present:  # If this was flagged, write data to a file for this protein
-            safe_mkdir(qc_directory)
-            name = osp.basename(alignment_file).split(".")[0]
-            name = self.id2name.get(name, name)
-            with open(osp.join(qc_directory, name + ".csv"), 'w') as f:
-                f.write("taxon,trimmed_length,gap_proportion,is_outlier\n")
-                for (taxon, data) in taxon2seq_data.items():
-                    f.write(f"{taxon},{data[0]},{data[1]},{taxon in outliers}\n")
-
-        return outliers_not_present, taxon2seq_data
 
     async def run(self):
         align_names = [osp.basename(f) for f in self.aligns]
@@ -1513,51 +1428,6 @@ class ErcWorkspace:
 
         align_names = [a for a in align_names if a not in to_remove]
 
-        if not self.skip_qc:
-            print("Running Alignment-Based QC...")
-            any_failed = False
-            tree = safe_phylo_read(self.timetree)
-            tree.set_outgroup("ORNITHORHYNCHUS_ANATINUS")
-            with open("failed_align_qc_checks.csv", 'w') as f, open("total_taxa_dist.csv", 'w') as f2:
-                f.write("file,name\n")
-                f2.write("Name,ODB,Taxon,Length,Percent Gaps,Is Flagged\n")
-                for align_name in set(align_names):
-                    align_file = osp.join(self.directory, 'aligns', align_name)
-                    trim_file = osp.join(self.directory, 'trim', align_name)
-                    prot_id = align_name.split(".")[0]
-                    name = self.id2name.get(prot_id, prot_id)
-                    qc_dir = osp.join(self.directory, 'failed_qc', 'align_tests', prot_id)
-
-                    outliers_not_present, seq_data = await self.align_quality_control(trim_file, qc_dir)
-                    for taxon, data in seq_data.items():
-                        f2.write(f"{name},{prot_id},{taxon},{data[0]},{data[1]},{not outliers_not_present}\n")
-
-                    if not outliers_not_present:
-                        any_failed = True
-
-                        print(f"QC WARNING: {trim_file} FAILED QC! Consider checking the trimmed alignment in {trim_file}.")
-                        f.write(align_name)
-                        f.write(",")
-                        f.write(name)
-                        f.write("\n")
-
-                        # Copy files
-                        # raw align might be compressed
-                        if osp.exists(align_file):
-                            records = read_records(align_file)
-                            records = phylogenetic_sort(records, tree)
-                            write_records(osp.join(qc_dir, osp.basename(align_file)), records)
-                        records = read_records(trim_file)
-                        records = phylogenetic_sort(records, tree)
-                        write_records(osp.join(qc_dir, osp.basename(trim_file).replace(".fa", ".trim.fa")), records)
-
-            if any_failed:
-                print("At least one protein failed Alignment-based QC (is there low alignment quality?)! Run with --skip-qc to ignore QC flagging.")
-
-                # TODO: Uncomment to exit early
-                # print("Exiting early...")
-                # exit()
-
         if self.segmented:  # Note: Concatentation not considered in segments because its pointless
             if len(self.concatenated) > 0:
                 raise AssertionError("Concatenation not supported with segERCs!")
@@ -1598,47 +1468,6 @@ class ErcWorkspace:
                                                     osp.join(self.directory, 'tree', f + '.pred'),
                                                     self.concatenated[f][1],
                                                     cores=self.cores_per_job) for f in aligns if not osp.exists(osp.join(self.directory, 'tree', f + '.pred'))])
-
-            if not self.skip_qc:
-                print("Running Tree-Based QC...")
-                any_failed = False
-                tree = safe_phylo_read(self.timetree)
-                tree.set_outgroup("ORNITHORHYNCHUS_ANATINUS")
-                with open("failed_treee_qc_checks.csv", 'w') as f:
-                    f.write("file,name\n")
-                    for align in set(align_names):
-                        align_file = osp.join(self.directory, 'aligns', align)
-                        trim_file = osp.join(self.directory, 'trim', align)
-                        tree_file = osp.join(self.directory, 'tree', align + ".pred")
-                        prot_id = align.split(".")[0]
-                        qc_dir = osp.join(self.directory, 'failed_qc', 'tree_tests', prot_id)
-
-                        if not (await self.tree_quality_control(trim_file, tree_file, qc_dir)):
-                            any_failed = True
-                            name = self.id2name.get(prot_id, prot_id)
-
-                            print(f"QC WARNING: {trim_file} FAILED QC! Consider checking the trimmed alignment in {trim_file} or the tree in {tree_file}.")
-                            f.write(align)
-                            f.write(",")
-                            f.write(name)
-                            f.write("\n")
-
-                            # Copy files
-                            # raw align might be compressed
-                            if osp.exists(align_file):
-                                records = read_records(align_file)
-                                records = phylogenetic_sort(records, tree)
-                                write_records(osp.join(qc_dir, osp.basename(align_file)), records)
-                            records = read_records(trim_file)
-                            records = phylogenetic_sort(records, tree)
-                            write_records(osp.join(qc_dir, osp.basename(trim_file).replace(".fa", ".trim.fa")), records)
-                            shutil.copy(tree_file, osp.join(qc_dir, osp.basename(tree_file)))
-
-                if any_failed:
-                    print("At least one protein failed Tree-based QC (is there low alignment quality?)! Run with --skip-qc to ignore QC flagging.")
-                    # TODO: Uncomment to exit early
-                    # print("Exiting early...")
-                    # exit()
 
         if self.archive:
             await archive_directory(osp.join(self.directory, 'trim'), 'trim.tar.bz2')

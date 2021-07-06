@@ -37,10 +37,9 @@ FASTA_ENDINGS = ["fa", "faa", "fs", "fasta"]
                                               "Defaults to 4 or the max number of cores available, whichever is lower. "
                                               "Set to -1 to use all cores.")
 @click.option("--prepare", is_flag=True, help="If passed, run all steps except for actual ERC calculations (align, trim, tree, QC).")
-@click.option("--skip-qc", is_flag=True, help="If passed, skip QC checking.")
 def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: str, erc_type: str, segment: bool,
          kmer: int, slide: bool, skip_align: bool, skip_trim: bool, archive: bool, id2name: str,
-         previous_run: List[str], n: int, prepare: bool, skip_qc: bool):
+         previous_run: List[str], n: int, prepare: bool):
     try_hook_uvloop()
     override_sys_out("ERC")
 
@@ -52,7 +51,7 @@ def main(timetree: str, sequences: str, align_pair: List[Tuple[str, str]], wd: s
     elif n < 0:
         n = all_cores
 
-    arg_mods = {'cores': n, 'archive': archive, 'prepare': prepare, 'skip_qc': skip_qc}
+    arg_mods = {'cores': n, 'archive': archive, 'prepare': prepare}
 
     if erc_type == "bt":
         arg_mods['time_corrected'] = True
