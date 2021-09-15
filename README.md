@@ -247,7 +247,7 @@ graphviz_network_plot(my_network, "my_network.png")
 ## Citations
 Please cite this specific implementation of ERCs with the following reference:
 ```
-Varela, Austin A., Sammy Cheng, and John H. Werren. "Evolutionary Inference Predicts Novel ACE2 Protein Interactions Relevant to COVID-19 Pathologies." bioRxiv (2021).
+Varela, Austin A., Sammy Cheng, and John H. Werren. 2021. "Novel ACE2 protein interactions relevant to COVID-19 predicted by evolutionary rate correlations." PeerJ 2021 9:e12159 https://doi.org/10.7717/peerj.12159
 ```
 
 Please cite the general ERC method with the following reference:
